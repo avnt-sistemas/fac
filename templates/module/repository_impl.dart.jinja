@@ -1,0 +1,197 @@
+import 'package:sqflite/sqflite.dart';
+import '../../domain/entities/{{ module_name }}_entity.dart';
+import '../../domain/repositories/i_{{ module_name }}_repository.dart';
+import '../models/{{ module_name }}_model.dart';
+import '../../../../core/data/datasources/sqlite_helper.dart';
+import '../../../../core/data/datasources/sqlite_relationship_helper.dart';
+
+/// Implementation of {{ pascal_case }} repository using SQLite
+class {{ pascal_case }}RepositoryImpl implements I{{ pascal_case }}Repository {
+  final Database _database;
+  final String _tableName = '{{ module_name }}';
+  late final SQLiteHelper _sqliteHelper;
+  late final SQLiteRelationshipHelper _relationshipHelper;
+
+  {{ pascal_case }}RepositoryImpl({required Database database}) : _database = database {
+    _sqliteHelper = SQLiteHelper(_database);
+    _relationshipHelper = SQLiteRelationshipHelper(_database);
+  }
+
+  @override
+  Future<List<{{ pascal_case }}Entity>> getAll({% if soft_delete %}{bool includeSoftDeleted = false}{% endif %}) async {
+    final List<Map<String, dynamic>> maps = await _sqliteHelper.getAll(
+      table: _tableName,
+{% if soft_delete %}
+      includeSoftDeleted: includeSoftDeleted,
+{% endif %}
+    );
+
+    return maps.map((map) => {{ pascal_case }}Model.fromJson(map).toEntity()).toList();
+  }
+
+  @override
+  Future<{{ pascal_case }}Entity?> getById(String id{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %}) async {
+    final map = await _sqliteHelper.getById(
+      table: _tableName,
+      id: id,
+{% if soft_delete %}
+      includeSoftDeleted: includeSoftDeleted,
+{% endif %}
+    );
+
+    if (map == null) {
+      return null;
+    }
+
+    return {{ pascal_case }}Model.fromJson(map).toEntity();
+  }
+
+  @override
+  Future<{{ pascal_case }}Entity> create({{ pascal_case }}Entity entity) async {
+    final {{ pascal_case }}Model model = {{ pascal_case }}Model.fromEntity(entity);
+    final now = DateTime.now();
+
+    // Prepare data for insertion
+    final Map<String, dynamic> data = {
+      ...model.toJson(),
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+{% if soft_delete %}
+      'deletedAt': null, // Garantir que deletedAt seja null para novos registros
+{% endif %}
+    };
+
+    // Remove id to let SQLiteHelper generate it (unless it's already set)
+    if (entity.id.isEmpty) {
+      data.remove('id');
+    }
+
+    final String id = await _sqliteHelper.create(
+      table: _tableName,
+      data: data,
+      id: entity.id.isNotEmpty ? entity.id : null,
+    );
+
+    // Fetch the created entity to return it
+    final createdEntity = await getById(id);
+    return createdEntity!;
+  }
+
+  @override
+  Future<{{ pascal_case }}Entity> update({{ pascal_case }}Entity entity) async {
+    final {{ pascal_case }}Model model = {{ pascal_case }}Model.fromEntity(entity);
+    final now = DateTime.now();
+
+    // Prepare data for update
+    final Map<String, dynamic> data = {
+      ...model.toJson(),
+      'updatedAt': now.toIso8601String(),
+    };
+
+    await _sqliteHelper.update(
+      table: _tableName,
+      id: entity.id,
+      data: data,
+    );
+
+    // Fetch the updated entity to return it
+    final updatedEntity = await getById(entity.id);
+    return updatedEntity!;
+  }
+
+  @override
+  Future<void> delete(String id) async {
+{% if soft_delete %}
+    // Soft delete com timestamp
+    await _sqliteHelper.update(
+      table: _tableName,
+      id: id,
+      data: {
+        'deletedAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+    );
+{% else %}
+    // Hard delete
+    await _sqliteHelper.delete(
+      table: _tableName,
+      id: id,
+    );
+{% endif %}
+  }
+
+{% if soft_delete %}
+  /// Remove permanentemente o registro do banco de dados (hard delete)
+  Future<void> hardDelete(String id) async {
+    await _sqliteHelper.delete(
+      table: _tableName,
+      id: id,
+    );
+  }
+
+  /// Restaura um registro com soft delete (remove o timestamp de exclusão)
+  Future<void> restore(String id) async {
+    await _sqliteHelper.update(
+      table: _tableName,
+      id: id,
+      data: {
+        'deletedAt': null,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  /// Obtém todos os registros, incluindo os que possuem soft delete
+  Future<List<{{ pascal_case }}Entity>> getAllWithDeleted() async {
+    return await getAll(includeSoftDeleted: true);
+  }
+{% endif %}
+
+  /// Search for entities by query string across multiple fields
+  Future<List<{{ pascal_case }}Entity>> search(String query{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %}) async {
+    final List<Map<String, dynamic>> maps = await _sqliteHelper.search(
+      table: _tableName,
+      query: query,
+      fields: [
+{% for field in fields %}
+{% if field.type == 'String' %}
+        '{{ field.name }}',
+{% endif %}
+{% endfor %}
+      ],
+{% if soft_delete %}
+      includeSoftDeleted: includeSoftDeleted,
+{% endif %}
+    );
+
+    return maps.map((map) => {{ pascal_case }}Model.fromJson(map).toEntity()).toList();
+  }
+
+  /// Count total entities
+  Future<int> count({% if soft_delete %}{bool includeSoftDeleted = false}{% endif %}) async {
+    return await _sqliteHelper.count(
+      table: _tableName,
+{% if soft_delete %}
+      includeSoftDeleted: includeSoftDeleted,
+{% endif %}
+    );
+  }
+{% for field in fields %}
+{% if field.type == 'reference' or field.reference is defined %}
+
+  /// Get {{ pascal_case }} entities related to {{ field.reference }}
+  Future<List<{{ pascal_case }}Entity>> getBy{{ field.reference }}Id(String {{ field.reference|lower }}Id{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %}) async {
+    final List<Map<String, dynamic>> maps = await _sqliteHelper.getAll(
+      table: _tableName,
+      where: '{{ field.name }}Id = ?',
+      whereArgs: [{{ field.reference|lower }}Id],
+{% if soft_delete %}
+      includeSoftDeleted: includeSoftDeleted,
+{% endif %}
+    );
+
+    return maps.map((map) => {{ pascal_case }}Model.fromJson(map).toEntity()).toList();
+  }
+{% endif %}
+{% endfor %}
+}

@@ -1,0 +1,14 @@
+import '../../domain/repositories/i_{{ module_name|lower }}_repository.dart';
+
+/// Use case to permanently delete (hard delete) a {{ pascal_case }}
+class HardDelete{{ pascal_case }}UseCase {
+  final I{{ pascal_case }}Repository _repository;
+
+  HardDelete{{ pascal_case }}UseCase({required I{{ pascal_case }}Repository repository})
+      : _repository = repository;
+
+  /// Execute the use case
+  Future<void> execute(String id) {
+    return _repository.hardDelete(id);
+  }
+}

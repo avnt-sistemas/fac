@@ -1,0 +1,15 @@
+import '../../domain/entities/{{ module_name|lower }}_entity.dart';
+import '../../domain/repositories/i_{{ module_name|lower }}_repository.dart';
+
+/// Use case to get all {{ pascal_case }} entities including soft-deleted ones
+class GetAllWithDeleted{{ pascal_case }}UseCase {
+  final I{{ pascal_case }}Repository _repository;
+
+  GetAllWithDeleted{{ pascal_case }}UseCase({required I{{ pascal_case }}Repository repository})
+      : _repository = repository;
+
+  /// Execute the use case
+  Future<List<{{ pascal_case }}Entity>> execute() {
+    return _repository.getAllWithDeleted();
+  }
+}

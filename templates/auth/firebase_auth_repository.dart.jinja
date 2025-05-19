@@ -1,0 +1,407 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../domain/repositories/i_auth_repository.dart';
+import '../../domain/entities/user_entity.dart';
+import '../models/user_model.dart';
+import '../../../../core/errors/app_exception.dart';
+
+/// Firebase implementation of the auth repository
+class AuthRepositoryImpl implements IAuthRepository {
+  final FirebaseAuth _auth;
+  final GoogleSignIn _googleSignIn;
+  final FirebaseFirestore _firestore;
+  final String _usersCollection = 'users';
+
+  AuthRepositoryImpl({
+    FirebaseAuth? auth,
+    GoogleSignIn? googleSignIn,
+    FirebaseFirestore? firestore,
+  }) :
+    _auth = auth ?? FirebaseAuth.instance,
+    _googleSignIn = googleSignIn ?? GoogleSignIn(),
+    _firestore = firestore ?? FirebaseFirestore.instance;
+
+  @override
+  Future<UserEntity?> getCurrentUser() async {
+    final firebaseUser = _auth.currentUser;
+
+    if (firebaseUser == null) {
+      return null;
+    }
+
+    try {
+      // Get additional user data from Firestore
+      final userDoc = await _firestore
+          .collection(_usersCollection)
+          .doc(firebaseUser.uid)
+          .get();
+
+      List<String> roles = ['user'];
+      Map<String, dynamic>? metadata;
+
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        if (userData != null) {
+          roles = userData['roles'] != null
+              ? List<String>.from(userData['roles'])
+              : ['user'];
+          metadata = userData['metadata'] as Map<String, dynamic>?;
+        }
+      }
+
+      // Create user model from Firebase user
+      return UserModel.fromFirebase(firebaseUser, roles: roles).toEntity();
+    } catch (e) {
+      throw AppException(
+        message: 'Failed to get current user: ${e.toString()}',
+        code: 'GET_USER_ERROR',
+      );
+    }
+  }
+
+  @override
+  Future<UserEntity> signInWithEmailAndPassword(String email, String password) async {
+    try {
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final firebaseUser = userCredential.user;
+
+      if (firebaseUser == null) {
+        throw const AppException(
+          message: 'Failed to sign in',
+          code: 'SIGN_IN_ERROR',
+        );
+      }
+
+      // Get or create user document in Firestore
+      await _ensureUserDocument(firebaseUser);
+
+      // Get user with roles from Firestore
+      return (await getCurrentUser())!;
+    } on FirebaseAuthException catch (e) {
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      throw AppException(
+        message: 'Sign in failed: ${e.toString()}',
+        code: 'SIGN_IN_ERROR',
+      );
+    }
+  }
+
+  @override
+  Future<UserEntity> registerWithEmailAndPassword(
+    String email,
+    String password,
+    String displayName
+  ) async {
+    try {
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final firebaseUser = userCredential.user;
+
+      if (firebaseUser == null) {
+        throw const AppException(
+          message: 'Failed to register user',
+          code: 'REGISTER_ERROR',
+        );
+      }
+
+      // Update user display name
+      await firebaseUser.updateDisplayName(displayName);
+
+      // Create user document in Firestore
+      await _createUserDocument(firebaseUser);
+
+      // Send email verification
+      await firebaseUser.sendEmailVerification();
+
+      // Refresh user data
+      await firebaseUser.reload();
+
+      // Get updated user
+      return (await getCurrentUser())!;
+    } on FirebaseAuthException catch (e) {
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      throw AppException(
+        message: 'Registration failed: ${e.toString()}',
+        code: 'REGISTER_ERROR',
+      );
+    }
+  }
+
+  @override
+  Future<void> signOut() async {
+    try {
+      await _auth.signOut();
+      await _googleSignIn.signOut();
+    } catch (e) {
+      throw AppException(
+        message: 'Sign out failed: ${e.toString()}',
+        code: 'SIGN_OUT_ERROR',
+      );
+    }
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      throw AppException(
+        message: 'Failed to send password reset email: ${e.toString()}',
+        code: 'PASSWORD_RESET_ERROR',
+      );
+    }
+  }
+
+  @override
+  Future<UserEntity> updateProfile({
+    String? displayName,
+    String? photoUrl,
+  }) async {
+    try {
+      final firebaseUser = _auth.currentUser;
+
+      if (firebaseUser == null) {
+        throw const UnauthorizedException(
+          message: 'User not authenticated',
+        );
+      }
+
+      if (displayName != null) {
+        await firebaseUser.updateDisplayName(displayName);
+      }
+
+      if (photoUrl != null) {
+        await firebaseUser.updatePhotoURL(photoUrl);
+      }
+
+      // Update user document in Firestore
+      await _updateUserDocument(firebaseUser, {
+        if (displayName != null) 'displayName': displayName,
+        if (photoUrl != null) 'photoUrl': photoUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Refresh user data
+      await firebaseUser.reload();
+
+      // Get updated user
+      return (await getCurrentUser())!;
+    } catch (e) {
+      throw AppException(
+        message: 'Failed to update profile: ${e.toString()}',
+        code: 'UPDATE_PROFILE_ERROR',
+      );
+    }
+  }
+
+  @override
+  Future<bool> isSignedIn() async {
+    return _auth.currentUser != null;
+  }
+
+  @override
+  Future<UserEntity> signInWithGoogle() async {
+    try {
+      // Start Google sign in process
+      final googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        throw const AppException(
+          message: 'Google sign in was cancelled',
+          code: 'GOOGLE_SIGN_IN_CANCELLED',
+        );
+      }
+
+      // Get authentication details
+      final googleAuth = await googleUser.authentication;
+
+      // Create Google credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in with Firebase
+      final userCredential = await _auth.signInWithCredential(credential);
+      final firebaseUser = userCredential.user;
+
+      if (firebaseUser == null) {
+        throw const AppException(
+          message: 'Failed to sign in with Google',
+          code: 'GOOGLE_SIGN_IN_ERROR',
+        );
+      }
+
+      // Create or update user document in Firestore
+      await _ensureUserDocument(firebaseUser);
+
+      // Get user with roles from Firestore
+      return (await getCurrentUser())!;
+    } catch (e) {
+      if (e is AppException) {
+        rethrow;
+      }
+      throw AppException(
+        message: 'Google sign in failed: ${e.toString()}',
+        code: 'GOOGLE_SIGN_IN_ERROR',
+      );
+    }
+  }
+
+  @override
+  Future<UserEntity> signInWithApple() async {
+    // Implementation for Apple Sign In would go here
+    throw UnimplementedError('Apple sign in not implemented');
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      final firebaseUser = _auth.currentUser;
+
+      if (firebaseUser == null) {
+        throw const UnauthorizedException(
+          message: 'User not authenticated',
+        );
+      }
+
+      // Delete user document from Firestore
+      await _firestore
+          .collection(_usersCollection)
+          .doc(firebaseUser.uid)
+          .delete();
+
+      // Delete Firebase Auth user
+      await firebaseUser.delete();
+    } catch (e) {
+      throw AppException(
+        message: 'Failed to delete account: ${e.toString()}',
+        code: 'DELETE_ACCOUNT_ERROR',
+      );
+    }
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {
+    try {
+      final firebaseUser = _auth.currentUser;
+
+      if (firebaseUser == null) {
+        throw const UnauthorizedException(
+          message: 'User not authenticated',
+        );
+      }
+
+      await firebaseUser.sendEmailVerification();
+    } catch (e) {
+      throw AppException(
+        message: 'Failed to send email verification: ${e.toString()}',
+        code: 'EMAIL_VERIFICATION_ERROR',
+      );
+    }
+  }
+
+  // Helper methods
+  Future<void> _ensureUserDocument(User firebaseUser) async {
+    final userDoc = await _firestore
+        .collection(_usersCollection)
+        .doc(firebaseUser.uid)
+        .get();
+
+    if (!userDoc.exists) {
+      await _createUserDocument(firebaseUser);
+    } else {
+      await _updateUserDocument(firebaseUser, {
+        'lastLoginAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<void> _createUserDocument(User firebaseUser) async {
+    await _firestore.collection(_usersCollection).doc(firebaseUser.uid).set({
+      'id': firebaseUser.uid,
+      'email': firebaseUser.email,
+      'displayName': firebaseUser.displayName,
+      'photoUrl': firebaseUser.photoURL,
+      'emailVerified': firebaseUser.emailVerified,
+      'roles': ['user'],
+      'provider': firebaseUser.providerData.isNotEmpty
+          ? firebaseUser.providerData[0].providerId
+          : 'firebase',
+      'metadata': {
+        'phoneNumber': firebaseUser.phoneNumber,
+      },
+      'createdAt': FieldValue.serverTimestamp(),
+      'lastLoginAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _updateUserDocument(User firebaseUser, Map<String, dynamic> data) async {
+    await _firestore
+        .collection(_usersCollection)
+        .doc(firebaseUser.uid)
+        .update(data);
+  }
+
+  AppException _handleFirebaseAuthException(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return AppException(
+          message: 'No user found with this email.',
+          code: e.code,
+        );
+      case 'wrong-password':
+        return AppException(
+          message: 'Wrong password.',
+          code: e.code,
+        );
+      case 'invalid-email':
+        return AppException(
+          message: 'The email address is invalid.',
+          code: e.code,
+        );
+      case 'user-disabled':
+        return AppException(
+          message: 'This user has been disabled.',
+          code: e.code,
+        );
+      case 'email-already-in-use':
+        return AppException(
+          message: 'The email address is already in use.',
+          code: e.code,
+        );
+      case 'operation-not-allowed':
+        return AppException(
+          message: 'This operation is not allowed.',
+          code: e.code,
+        );
+      case 'weak-password':
+        return AppException(
+          message: 'The password is too weak.',
+          code: e.code,
+        );
+      case 'requires-recent-login':
+        return AppException(
+          message: 'This operation requires re-authentication.',
+          code: e.code,
+        );
+      default:
+        return AppException(
+          message: e.message ?? 'An unknown error occurred',
+          code: e.code,
+        );
+    }
+  }
+}

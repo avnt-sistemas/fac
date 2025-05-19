@@ -1,0 +1,260 @@
+import 'dart:convert';
+import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
+
+/// Helper class for common SQLite operations
+class SQLiteHelper {
+  final Database _db;
+
+  SQLiteHelper(this._db);
+
+  /// Create a record in the database
+  Future<String> create({
+    required String table,
+    required Map<String, dynamic> data,
+    String? id,
+  }) async {
+    // Generate UUID if not provided
+    final recordId = id ?? _generateUuid();
+
+    // Add timestamps
+    final now = DateTime.now().toIso8601String();
+    final recordData = {
+      ...data,
+      'id': recordId,
+      'createdAt': now,
+      'updatedAt': now,
+    };
+
+    await _db.insert(
+      table,
+      recordData,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    return recordId;
+  }
+
+  /// Read a record by id
+  Future<Map<String, dynamic>?> getById({
+    required String table,
+    required String id,
+    bool includeSoftDeleted = false,
+  }) async {
+    final query = includeSoftDeleted
+        ? 'SELECT * FROM $table WHERE id = ?'
+        : 'SELECT * FROM $table WHERE id = ? AND deletedAt IS NULL';
+
+    final results = await _db.rawQuery(query, [id]);
+
+    if (results.isEmpty) {
+      return null;
+    }
+
+    return _processRecord(results.first);
+  }
+
+  /// Get all records
+  Future<List<Map<String, dynamic>>> getAll({
+    required String table,
+    String? where,
+    List<Object?>? whereArgs,
+    String? orderBy,
+    int? limit,
+    int? offset,
+    bool includeSoftDeleted = false,
+  }) async {
+    // Handle soft delete filter
+    String finalWhere = where ?? '';
+    List<Object?> finalWhereArgs = whereArgs ?? [];
+
+    if (!includeSoftDeleted) {
+      if (finalWhere.isNotEmpty) {
+        finalWhere = '($finalWhere) AND deletedAt IS NULL';
+      } else {
+        finalWhere = 'deletedAt IS NULL';
+      }
+    }
+
+    final results = await _db.query(
+      table,
+      where: finalWhere.isNotEmpty ? finalWhere : null,
+      whereArgs: finalWhereArgs.isNotEmpty ? finalWhereArgs : null,
+      orderBy: orderBy,
+      limit: limit,
+      offset: offset,
+    );
+
+    return results.map(_processRecord).toList();
+  }
+
+  /// Update a record
+  Future<void> update({
+    required String table,
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    // Add updated timestamp
+    final updateData = {
+      ...data,
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+
+    await _db.update(
+      table,
+      updateData,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Hard delete a record
+  Future<void> delete({
+    required String table,
+    required String id,
+  }) async {
+    await _db.delete(
+      table,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Soft delete a record - já não usamos esse método, pois implementamos diretamente no repository
+  /// Mantido por compatibilidade
+  @Deprecated('Use repository.delete() instead')
+  Future<void> softDelete({
+    required String table,
+    required String id,
+  }) async {
+    await _db.update(
+      table,
+      {
+        'deletedAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Restore a soft-deleted record - já não usamos esse método, pois implementamos diretamente no repository
+  /// Mantido por compatibilidade
+  @Deprecated('Use repository.restore() instead')
+  Future<void> restore({
+    required String table,
+    required String id,
+  }) async {
+    await _db.update(
+      table,
+      {
+        'deletedAt': null,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Search records by multiple fields
+  Future<List<Map<String, dynamic>>> search({
+    required String table,
+    required String query,
+    required List<String> fields,
+    bool includeSoftDeleted = false,
+  }) async {
+    // Build WHERE clause for each searchable field
+    final List<String> conditions = fields.map((field) => '$field LIKE ?').toList();
+    final whereClause = conditions.join(' OR ');
+
+    // Add soft delete filter if needed
+    final String finalWhere = includeSoftDeleted
+        ? whereClause
+        : '($whereClause) AND deletedAt IS NULL';
+
+    // Create args with the search query for each field
+    final List<String> whereArgs = List.filled(fields.length, '%$query%');
+
+    final results = await _db.query(
+      table,
+      where: finalWhere,
+      whereArgs: whereArgs,
+    );
+
+    return results.map(_processRecord).toList();
+  }
+
+  /// Count records
+  Future<int> count({
+    required String table,
+    String? where,
+    List<Object?>? whereArgs,
+    bool includeSoftDeleted = false,
+  }) async {
+    // Handle soft delete filter
+    String finalWhere = where ?? '';
+    List<Object?> finalWhereArgs = whereArgs ?? [];
+
+    if (!includeSoftDeleted) {
+      if (finalWhere.isNotEmpty) {
+        finalWhere = '($finalWhere) AND deletedAt IS NULL';
+      } else {
+        finalWhere = 'deletedAt IS NULL';
+      }
+    }
+
+    final result = await _db.rawQuery(
+      'SELECT COUNT(*) as count FROM $table${finalWhere.isNotEmpty ? ' WHERE $finalWhere' : ''}',
+      finalWhereArgs.isNotEmpty ? finalWhereArgs : null,
+    );
+
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// Execute a custom SQL query with parameters
+  Future<List<Map<String, dynamic>>> rawQuery(
+    String sql,
+    List<Object?>? arguments,
+  ) async {
+    final results = await _db.rawQuery(sql, arguments);
+    return results.map(_processRecord).toList();
+  }
+
+  /// Process database record to handle complex types
+  Map<String, dynamic> _processRecord(Map<String, dynamic> record) {
+    final processed = Map<String, dynamic>.from(record);
+
+    processed.forEach((key, value) {
+      // Process list fields stored as JSON
+      if (value is String && (value.startswith('[') && value.endsWith(']'))) {
+        try {
+          final decoded = jsonDecode(value);
+          if (decoded is List) {
+            processed[key] = decoded;
+          }
+        } catch (_) {
+          // If not valid JSON, keep as string
+        }
+      }
+
+      // Process map fields stored as JSON
+      if (value is String && (value.startswith('{') && value.endsWith('}'))) {
+        try {
+          final decoded = jsonDecode(value);
+          if (decoded is Map) {
+            processed[key] = decoded;
+          }
+        } catch (_) {
+          // If not valid JSON, keep as string
+        }
+      }
+    });
+
+    return processed;
+  }
+
+  /// Generate a UUID for new records
+  String _generateUuid() {
+    return const Uuid().v4();
+  }
+}

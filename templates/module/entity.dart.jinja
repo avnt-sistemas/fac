@@ -1,0 +1,89 @@
+import 'package:equatable/equatable.dart';
+
+/// Entity class for {{ pascal_case }}
+class {{ pascal_case }}Entity extends Equatable {
+  final String id;
+{% for field in fields %}
+  final {{ field.type }} {{ field.name }};
+{% endfor %}
+  final DateTime createdAt;
+  final DateTime updatedAt;
+{% if soft_delete %}
+  final DateTime? deletedAt;  // Campo para soft delete
+{% endif %}
+
+  const {{ pascal_case }}Entity({
+    required this.id,
+{% for field in fields %}
+    {% if field.required %}required this.{{ field.name }},
+    {% elif field.default is defined %}this.{{ field.name }} = {{ field.default }},
+    {% else %}
+        {% if field.type.endswith('?') %}
+    this.{{ field.name }} = null,
+        {% elif field.type == 'String' %}
+    this.{{ field.name }} = "",
+        {% elif field.type == 'int' %}
+    this.{{ field.name }} = -1,
+        {% elif field.type == 'double' %}
+    this.{{ field.name }} = 0.0,
+        {% elif field.type == 'bool' %}
+    this.{{ field.name }} = false,
+        {% elif field.type.startswith('List') %}
+    this.{{ field.name }} = const [],
+        {% elif field.type == 'DateTime' %}
+    this.{{ field.name }} = DateTime(1970, 1, 1),
+        {% else %}
+    this.{{ field.name }},
+        {% endif %}
+    {% endif %}
+{% endfor %}
+    required this.createdAt,
+    required this.updatedAt,
+{% if soft_delete %}
+    this.deletedAt,  // Soft delete timestamp
+{% endif %}
+  });
+
+  @override
+  List<Object?> get props => [
+    id,
+{% for field in fields %}
+    {{ field.name }},
+{% endfor %}
+    createdAt,
+    updatedAt,
+{% if soft_delete %}
+    deletedAt,
+{% endif %}
+  ];
+
+{% if soft_delete %}
+  /// Verifica se o item foi excluído (soft delete)
+  bool get isDeleted => deletedAt != null;
+{% endif %}
+
+  /// Create a copy with modified fields
+  {{ pascal_case }}Entity copyWith({
+    String? id,
+{% for field in fields %}
+    {{ field.type }}{% if not field.type.endswith('?') %}?{% endif %} {{ field.name }},
+{% endfor %}
+    DateTime? createdAt,
+    DateTime? updatedAt,
+{% if soft_delete %}
+    DateTime? deletedAt,
+{% endif %}
+  }) {
+    return {{ pascal_case }}Entity(
+      id: id ?? this.id,
+{% for field in fields %}
+      {{ field.name }}: {{ field.name }} ?? this.{{ field.name }},
+{% endfor %}
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+{% if soft_delete %}
+      deletedAt: deletedAt ?? this.deletedAt,  // Permitir modificar o deletedAt
+{% endif %}
+    );
+  }
+}

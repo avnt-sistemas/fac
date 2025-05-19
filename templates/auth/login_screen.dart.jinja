@@ -1,0 +1,233 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
+import '../widgets/auth_form_fields.dart';
+{% if auth_provider == 'firebase' %}
+import '../widgets/social_login_buttons.dart';
+{% endif %}
+import '../../../../app/theme/dimensions.dart';
+import '../../../../core/widgets/loading_indicator.dart';
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({Key? key}) : super(key: key);
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _rememberMe = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Login'),
+      ),
+      body: Consumer<AuthController>(
+        builder: (context, authController, child) {
+          if (authController.isLoading) {
+            return const LoadingIndicator(
+              message: 'Signing in...',
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(Dimensions.paddingL),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: Dimensions.marginL),
+                  _buildLogo(),
+                  const SizedBox(height: Dimensions.marginXL),
+                  if (authController.error != null) ...[
+                    _buildErrorMessage(authController.error!),
+                    const SizedBox(height: Dimensions.marginM),
+                  ],
+                  _buildEmailField(),
+                  const SizedBox(height: Dimensions.marginM),
+                  _buildPasswordField(),
+                  const SizedBox(height: Dimensions.marginS),
+                  _buildRememberMeAndForgotPassword(),
+                  const SizedBox(height: Dimensions.marginL),
+                  _buildLoginButton(),
+                  const SizedBox(height: Dimensions.marginM),
+                  _buildRegisterLink(),
+{% if auth_provider == 'firebase' %}
+                  const SizedBox(height: Dimensions.marginXL),
+                  const Text(
+                    'Or sign in with',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: Dimensions.marginM),
+                  SocialLoginButtons(
+                    onGoogleLogin: () => _handleSocialLogin(
+                      () => authController.signInWithGoogle(),
+                    ),
+                    onAppleLogin: () => _handleSocialLogin(
+                      () => authController.signInWithApple(),
+                    ),
+                  ),
+{% endif %}
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLogo() {
+    return Center(
+      child: Column(
+        children: [
+          Icon(
+            Icons.lock,
+            size: 64,
+            color: Theme.of(context).primaryColor,
+          ),
+          const SizedBox(height: Dimensions.marginS),
+          Text(
+            'Welcome Back',
+            style: Theme.of(context).textTheme.headline5,
+          ),
+          const SizedBox(height: Dimensions.marginS),
+          Text(
+            'Sign in to continue',
+            style: Theme.of(context).textTheme.subtitle1?.copyWith(
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorMessage(String error) {
+    return Container(
+      padding: const EdgeInsets.all(Dimensions.paddingM),
+      decoration: BoxDecoration(
+        color: Colors.red.shade100,
+        borderRadius: BorderRadius.circular(Dimensions.radiusM),
+      ),
+      child: Text(
+        error,
+        style: TextStyle(
+          color: Colors.red.shade900,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmailField() {
+    return EmailFormField(
+      controller: _emailController,
+      autofocus: true,
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return PasswordFormField(
+      controller: _passwordController,
+    );
+  }
+
+  Widget _buildRememberMeAndForgotPassword() {
+    return Row(
+      children: [
+        Checkbox(
+          value: _rememberMe,
+          onChanged: (value) {
+            setState(() {
+              _rememberMe = value ?? false;
+            });
+          },
+        ),
+        const Text('Remember me'),
+        const Spacer(),
+        TextButton(
+          onPressed: _navigateToForgotPassword,
+          child: const Text('Forgot Password?'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginButton() {
+    return ElevatedButton(
+      onPressed: _handleLogin,
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+      ),
+      child: const Text(
+        'Sign In',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRegisterLink() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text("Don't have an account?"),
+        TextButton(
+          onPressed: _navigateToRegister,
+          child: const Text('Sign Up'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleLogin() async {
+    if (_formKey.currentState!.validate()) {
+      final authController = Provider.of<AuthController>(context, listen: false);
+
+      final success = await authController.signInWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (success && mounted) {
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      }
+    }
+  }
+
+{% if auth_provider == 'firebase' %}
+  Future<void> _handleSocialLogin(Future<bool> Function() signInMethod) async {
+    final success = await signInMethod();
+
+    if (success && mounted) {
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    }
+  }
+{% endif %}
+
+  void _navigateToRegister() {
+    Navigator.pushNamed(context, '/register');
+  }
+
+  void _navigateToForgotPassword() {
+    Navigator.pushNamed(context, '/forgot-password');
+  }
+}

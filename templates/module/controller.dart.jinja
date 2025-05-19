@@ -1,0 +1,302 @@
+import 'package:flutter/foundation.dart';
+import '../../domain/entities/{{ module_name|lower }}_entity.dart';
+import '../../domain/usecases/get_all_{{ module_name|lower }}_usecase.dart';
+import '../../domain/usecases/get_by_id_{{ module_name|lower }}_usecase.dart';
+import '../../domain/usecases/create_{{ module_name|lower }}_usecase.dart';
+import '../../domain/usecases/update_{{ module_name|lower }}_usecase.dart';
+import '../../domain/usecases/delete_{{ module_name|lower }}_usecase.dart';
+{% if soft_delete %}
+import '../../domain/usecases/restore_{{ module_name|lower }}_usecase.dart';
+import '../../domain/usecases/hard_delete_{{ module_name|lower }}_usecase.dart';
+import '../../domain/usecases/get_all_with_deleted_{{ module_name|lower }}_usecase.dart';
+{% endif %}
+
+class {{ pascal_case }}Controller extends ChangeNotifier {
+  final GetAll{{ pascal_case }}UseCase _getAllUseCase;
+  final GetById{{ pascal_case }}UseCase _getByIdUseCase;
+  final Create{{ pascal_case }}UseCase _createUseCase;
+  final Update{{ pascal_case }}UseCase _updateUseCase;
+  final Delete{{ pascal_case }}UseCase _deleteUseCase;
+{% if soft_delete %}
+  final Restore{{ pascal_case }}UseCase _restoreUseCase;
+  final HardDelete{{ pascal_case }}UseCase _hardDeleteUseCase;
+  final GetAllWithDeleted{{ pascal_case }}UseCase _getAllWithDeletedUseCase;
+
+  // Lista de itens excluídos (soft delete)
+  List<{{ pascal_case }}Entity> _deletedItems = [];
+  bool _showDeletedItems = false;
+{% endif %}
+
+  List<{{ pascal_case }}Entity> _items = [];
+  {{ pascal_case }}Entity? _selectedItem;
+  bool _isLoading = false;
+  String? _error;
+
+  {{ pascal_case }}Controller({
+    required GetAll{{ pascal_case }}UseCase getAllUseCase,
+    required GetById{{ pascal_case }}UseCase getByIdUseCase,
+    required Create{{ pascal_case }}UseCase createUseCase,
+    required Update{{ pascal_case }}UseCase updateUseCase,
+    required Delete{{ pascal_case }}UseCase deleteUseCase,
+{% if soft_delete %}
+    required Restore{{ pascal_case }}UseCase restoreUseCase,
+    required HardDelete{{ pascal_case }}UseCase hardDeleteUseCase,
+    required GetAllWithDeleted{{ pascal_case }}UseCase getAllWithDeletedUseCase,
+{% endif %}
+  }) :
+    _getAllUseCase = getAllUseCase,
+    _getByIdUseCase = getByIdUseCase,
+    _createUseCase = createUseCase,
+    _updateUseCase = updateUseCase,
+    _deleteUseCase = deleteUseCase{% if soft_delete %},
+    _restoreUseCase = restoreUseCase,
+    _hardDeleteUseCase = hardDeleteUseCase,
+    _getAllWithDeletedUseCase = getAllWithDeletedUseCase{% endif %};
+
+  // Getters
+  List<{{ pascal_case }}Entity> get items => {% if soft_delete %}_showDeletedItems ? [..._items, ..._deletedItems] : {% endif %}_items;
+{% if soft_delete %}
+  List<{{ pascal_case }}Entity> get deletedItems => _deletedItems;
+  bool get showDeletedItems => _showDeletedItems;
+{% endif %}
+  {{ pascal_case }}Entity? get selectedItem => _selectedItem;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+
+{% if soft_delete %}
+  // Toggle para mostrar/ocultar itens excluídos
+  void toggleShowDeletedItems() {
+    _showDeletedItems = !_showDeletedItems;
+    if (_showDeletedItems) {
+      _loadDeletedItems();
+    }
+    notifyListeners();
+  }
+
+  // Carrega os itens excluídos
+  Future<void> _loadDeletedItems() async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final allItemsWithDeleted = await _getAllWithDeletedUseCase.execute();
+      _deletedItems = allItemsWithDeleted.where((item) => item.deletedAt != null).toList();
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+{% endif %}
+
+  // Get all items
+  Future<void> getAll() async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+{% if soft_delete %}
+      final allItems = await _getAllUseCase.execute();
+      _items = allItems;
+
+      // Se a exibição de itens excluídos estiver ativa, carregue-os também
+      if (_showDeletedItems) {
+        await _loadDeletedItems();
+      }
+{% else %}
+      _items = await _getAllUseCase.execute();
+{% endif %}
+
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Get item by id
+  Future<{{ pascal_case }}Entity?> getById(String id{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %}) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final item = await _getByIdUseCase.execute(id{% if soft_delete %}, includeSoftDeleted: includeSoftDeleted{% endif %});
+      _selectedItem = item;
+      notifyListeners();
+      return item;
+    } catch (e) {
+      _setError(e.toString());
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Create new item
+  Future<{{ pascal_case }}Entity?> create({{ pascal_case }}Entity entity) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final createdItem = await _createUseCase.execute(entity);
+      _items.add(createdItem);
+      notifyListeners();
+      return createdItem;
+    } catch (e) {
+      _setError(e.toString());
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Update existing item
+  Future<{{ pascal_case }}Entity?> update({{ pascal_case }}Entity entity) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final updatedItem = await _updateUseCase.execute(entity);
+
+      final index = _items.indexWhere((item) => item.id == entity.id);
+      if (index != -1) {
+        _items[index] = updatedItem;
+      }
+
+      if (_selectedItem?.id == entity.id) {
+        _selectedItem = updatedItem;
+      }
+
+      notifyListeners();
+      return updatedItem;
+    } catch (e) {
+      _setError(e.toString());
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Delete item
+  Future<bool> delete(String id) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      await _deleteUseCase.execute(id);
+
+{% if soft_delete %}
+      // Se soft delete está ativado, o item só foi marcado como excluído,
+      // mas ainda existe no banco. Vamos atualizar nossas listas locais.
+      final index = _items.indexWhere((item) => item.id == id);
+      if (index != -1) {
+        // Obter o item atualizado com o timestamp de exclusão
+        final updatedItem = await getById(id, includeSoftDeleted: true);
+        if (updatedItem != null && updatedItem.deletedAt != null) {
+          _deletedItems.add(updatedItem);
+          _items.removeAt(index);
+        }
+      }
+{% else %}
+      // Remover o item da lista
+      _items.removeWhere((item) => item.id == id);
+{% endif %}
+
+      if (_selectedItem?.id == id) {
+        _selectedItem = null;
+      }
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+{% if soft_delete %}
+  // Restaurar item excluído (soft delete)
+  Future<bool> restore(String id) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      await _restoreUseCase.execute(id);
+
+      // Mover o item da lista de excluídos para a lista de ativos
+      final deletedIndex = _deletedItems.indexWhere((item) => item.id == id);
+      if (deletedIndex != -1) {
+        // Obter o item restaurado (sem deletedAt)
+        final restoredItem = await getById(id);
+        if (restoredItem != null) {
+          _items.add(restoredItem);
+          _deletedItems.removeAt(deletedIndex);
+        }
+      }
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Hard delete - remove permanentemente
+  Future<bool> hardDelete(String id) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      await _hardDeleteUseCase.execute(id);
+
+      // Remover de ambas as listas
+      _items.removeWhere((item) => item.id == id);
+      _deletedItems.removeWhere((item) => item.id == id);
+
+      if (_selectedItem?.id == id) {
+        _selectedItem = null;
+      }
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+{% endif %}
+
+  // Helper methods
+  void selectItem({{ pascal_case }}Entity item) {
+    _selectedItem = item;
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    _selectedItem = null;
+    notifyListeners();
+  }
+
+  void _setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
+  }
+
+  void _setError(String errorMessage) {
+    _error = errorMessage;
+    notifyListeners();
+  }
+
+  void _clearError() {
+    _error = null;
+  }
+}

@@ -1,0 +1,273 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../../app/theme/app_text_styles.dart';
+import '../../../../app/theme/dimensions.dart';
+import '../../../../core/widgets/loading_indicator.dart';
+import '../../domain/entities/{{ snake_case_name }}_entity.dart';
+import '../controllers/{{ snake_case_name }}_controller.dart';
+
+class {{ entity_name }}DetailScreen extends StatefulWidget {
+  const {{ entity_name }}DetailScreen({Key? key}) : super(key: key);
+
+  @override
+  State<{{ entity_name }}DetailScreen> createState() => _{{ entity_name }}DetailScreenState();
+}
+
+class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailScreen> {
+  late {{ entity_name }}Controller _controller;
+  {{ entity_name }}Entity? _item;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Provider.of<{{ entity_name }}Controller>(context, listen: false);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is {{ entity_name }}Entity) {
+      _item = args;
+    } else if (args is String) {
+      _loadItem(args);
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _loadItem(String id) async {
+    try {
+      final item = await _controller.getById(id);
+      if (item == null) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('{{ entity_name }} not found'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          _item = item;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading {{ entity_name }}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_item == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('{{ entity_name }} Details'),
+        ),
+        body: const LoadingIndicator(),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('{{ entity_name }} Details'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/{{ snake_case_name }}/edit',
+                arguments: _item,
+              ).then((_) {
+                // Refresh the item after edit
+                if (_item != null) {
+                  _loadItem(_item!.id);
+                }
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () {
+              _showDeleteConfirmation(context, _item!);
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(Dimensions.paddingM),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            const SizedBox(height: Dimensions.marginL),
+            _buildDetails(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Card(
+      elevation: Dimensions.elevationS,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Dimensions.radiusM),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Dimensions.paddingM),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+{% for field in fields %}
+{% if loop.first %}
+              _item!.{{ field.name }}{% if field.type != 'String' %}.toString(){% endif %},
+{% endif %}
+{% endfor %}
+              style: AppTextStyles.headline5,
+            ),
+            const Divider(),
+            const SizedBox(height: Dimensions.marginS),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 16),
+                const SizedBox(width: Dimensions.marginS),
+                Text(
+                  'Created: ${_item!.createdAt.toString().substring(0, 10)}',
+                  style: AppTextStyles.caption,
+                ),
+                const SizedBox(width: Dimensions.marginM),
+                const Icon(Icons.update, size: 16),
+                const SizedBox(width: Dimensions.marginS),
+                Text(
+                  'Updated: ${_item!.updatedAt.toString().substring(0, 10)}',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetails() {
+    return Card(
+      elevation: Dimensions.elevationS,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Dimensions.radiusM),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Dimensions.paddingM),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Details',
+              style: AppTextStyles.headline6,
+            ),
+            const Divider(),
+            const SizedBox(height: Dimensions.marginS),
+{% for field in fields %}
+            _buildDetailRow(
+              '{{ field.name | capitalize }}',
+              _item!.{{ field.name }}{% if field.type == 'DateTime' or field.type == 'DateTime?' %}?.toString().substring(0, 10) ?? 'N/A'{% elif field.type != 'String' %}?.toString() ?? 'N/A'{% else %} ?? 'N/A'{% endif %},
+              Icons.{% if field.type == 'String' %}text_fields{% elif field.type == 'int' or field.type == 'double' %}numbers{% elif field.type == 'bool' %}check_circle{% elif field.type == 'DateTime' or field.type == 'DateTime?' %}calendar_today{% elif field.type.startswith('List') %}list{% else %}info{% endif %},
+            ),
+{% endfor %}
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Dimensions.paddingS),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: Dimensions.marginM),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTextStyles.subtitle2,
+                ),
+                Text(
+                  value,
+                  style: AppTextStyles.bodyText2,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, {{ entity_name }}Entity item) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: const Text(
+          'Are you sure you want to delete this {{ entity_name }}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+{% if soft_delete is defined and soft_delete %}
+                await _controller.delete(item.id);
+{% else %}
+                await _controller.delete(item.id);
+{% endif %}
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('{{ entity_name }} deleted successfully'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting {{ entity_name }}: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+}

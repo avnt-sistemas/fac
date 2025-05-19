@@ -1,0 +1,89 @@
+import 'package:flutter/material.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/dimensions.dart';
+
+class KPIWidget extends StatelessWidget {
+  final String title;
+  final String dataSource;
+  final String operation;
+
+  const KPIWidget({
+    Key? key,
+    required this.title,
+    required this.dataSource,
+    required this.operation,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: Dimensions.elevationS,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Dimensions.radiusM),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Dimensions.paddingM),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.subtitle1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: Dimensions.marginM),
+            FutureBuilder<String>(
+              future: _fetchKPIValue(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Text(
+                    'Error: ${snapshot.error}',
+                    style: Theme.of(context).textTheme.caption?.copyWith(
+                      color: AppColors.error,
+                    ),
+                  );
+                }
+
+                return Text(
+                  snapshot.data ?? 'N/A',
+                  style: Theme.of(context).textTheme.headline4?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String> _fetchKPIValue() async {
+    // This would be replaced with actual data fetching logic
+    // based on the dataSource and operation
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (operation == 'count') {
+      return '24';
+    } else if (operation == 'sum') {
+      return '1,245';
+    } else if (operation == 'average') {
+      return '42.5';
+    } else {
+      return '0';
+    }
+  }
+}

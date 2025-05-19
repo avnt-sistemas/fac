@@ -1,0 +1,379 @@
+app:
+  name: "Rally Manager"
+  package: "br.com.avnt.rally_manager"
+  description: "Complete system for rally event management and scoring"
+
+theme:
+  primary_color: "#1E88E5"
+  secondary_color: "#424242"
+  accent_color: "#FF8F00"
+  font_family: "Roboto"
+
+auth:
+  enabled: false
+  #provider: "local"  # Using local authentication for offline functionality
+
+persistence:
+  enabled: true
+  provider: "sqlite"  # SQLite for offline operation
+
+modules:
+  - name: "Event"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "startDate"
+        type: "DateTime"
+        required: true
+      - name: "endDate"
+        type: "DateTime"
+        required: true
+      - name: "location"
+        type: "String"
+        required: true
+      - name: "description"
+        type: "String"
+      - name: "status"
+        type: "String"
+        required: true
+        default: "Planned"  # Planned, InProgress, Completed, Cancelled
+      - name: "eventType"
+        type: "String"
+        required: true  # Rally, Cross Country, Drift, etc
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Stage"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "eventId"
+        type: "reference"
+        reference: "Event"
+        required: true
+      - name: "startDateTime"
+        type: "DateTime"
+        required: true
+      - name: "distance"
+        type: "double"
+        required: true
+      - name: "terrainType"
+        type: "String"  # Asphalt, Dirt, Mixed
+      - name: "difficulty"
+        type: "int"  # 1-5
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Participant"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "type"
+        type: "String"
+        required: true  # 'Driver' or 'Navigator'
+      - name: "birthDate"
+        type: "DateTime"
+      - name: "nationality"
+        type: "String"
+      - name: "licenseNumber"
+        type: "String"
+        required: true
+      - name: "teamId"
+        type: "reference"
+        reference: "Team"
+      - name: "photo"
+        type: "String"  # URL or path to photo
+      - name: "contactEmail"
+        type: "String"
+        validation: "email"
+      - name: "contactPhone"
+        type: "String"
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Team"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "country"
+        type: "String"
+      - name: "sponsors"
+        type: "String"
+      - name: "manager"
+        type: "String"
+      - name: "logo"
+        type: "String"  # URL or path to logo
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Vehicle"
+    fields:
+      - name: "brand"
+        type: "String"
+        required: true
+      - name: "model"
+        type: "String"
+        required: true
+      - name: "year"
+        type: "int"
+      - name: "categoryId"
+        type: "reference"
+        reference: "Category"
+        required: true
+      - name: "teamId"
+        type: "reference"
+        reference: "Team"
+      - name: "specifications"
+        type: "String"
+      - name: "photo"
+        type: "String"  # URL or path to photo
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Category"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "description"
+        type: "String"
+      - name: "handicapFactor"
+        type: "double"
+        default: "1.0"
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Registration"
+    fields:
+      - name: "eventId"
+        type: "reference"
+        reference: "Event"
+        required: true
+      - name: "driverId"
+        type: "reference"
+        reference: "Participant"
+        required: true
+      - name: "navigatorId"
+        type: "reference"
+        reference: "Participant"
+        required: true
+      - name: "vehicleId"
+        type: "reference"
+        reference: "Vehicle"
+        required: true
+      - name: "competitorNumber"
+        type: "String"
+        required: true
+      - name: "status"
+        type: "String"
+        default: "'Pending'"  # Pending, Confirmed, Cancelled
+      - name: "feesPaid"
+        type: "bool"
+        default: "false"
+      - name: "registrationDate"
+        type: "DateTime"
+        required: true
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Result"
+    fields:
+      - name: "registrationId"
+        type: "reference"
+        reference: "Registration"
+        required: true
+      - name: "stageId"
+        type: "reference"
+        reference: "Stage"
+        required: true
+      - name: "grossTime"
+        type: "double"  # In seconds
+        required: true
+      - name: "netTime"
+        type: "double"  # After penalties
+        required: true
+      - name: "position"
+        type: "int"
+      - name: "status"
+        type: "String"
+        default: "'Pending'"  # Pending, Confirmed, DNF, DSQ
+      - name: "points"
+        type: "int"
+        default: "0"
+      - name: "notes"
+        type: "String"
+    soft_delete: false
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Penalty"
+    fields:
+      - name: "resultId"
+        type: "reference"
+        reference: "Result"
+        required: true
+      - name: "type"
+        type: "String"
+        required: true  # Time, Points, Disqualification
+      - name: "description"
+        type: "String"
+        required: true
+      - name: "timeAdded"
+        type: "double"
+        default: "0"
+      - name: "pointsDeducted"
+        type: "int"
+        default: "0"
+      - name: "officialResponsible"
+        type: "String"
+      - name: "status"
+        type: "String"
+        default: "'Confirmed'"  # Confirmed, UnderAppeal, Cancelled
+      - name: "dateTime"
+        type: "DateTime"
+        required: true
+    soft_delete: false
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "SpreadsheetImport"
+    fields:
+      - name: "stageId"
+        type: "reference"
+        reference: "Stage"
+        required: true
+      - name: "fileName"
+        type: "String"
+        required: true
+      - name: "importDate"
+        type: "DateTime"
+        required: true
+      - name: "status"
+        type: "String"
+        default: "'Pending'"  # Pending, Processed, Error
+      - name: "errorMessage"
+        type: "String"
+      - name: "columnMapping"
+        type: "String"  # JSON with column mapping
+      - name: "userId"
+        type: "reference"
+        reference: "User"
+    soft_delete: false
+    export:
+      csv: true
+      xlsx: true
+      pdf: false
+
+  - name: "SpreadsheetUpload"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "stageId"
+        type: "reference"
+        reference: "Stage"
+        required: true
+      - name: "filePath"
+        type: "String"
+        required: true
+      - name: "uploadDate"
+        type: "DateTime"
+        required: true
+      - name: "status"
+        type: "String"
+        default: "'Pending'"  # Pending, Processed, Error
+      - name: "mappingConfiguration"
+        type: "String"  # JSON with configuration settings
+    soft_delete: false
+    export:
+      csv: false
+      xlsx: false
+      pdf: false
+
+  - name: "User"
+    is_auth_model: true
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "email"
+        type: "String"
+        required: true
+        unique: true
+        validation: "email"
+      - name: "position"
+        type: "String"  # Director, Timer, etc.
+      - name: "roles"
+        type: "List<String>"
+        default: "['user']"  # admin, user, timer, director
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: false
+
+dashboard:
+  enabled: true
+  widgets:
+    - type: "bar_chart"
+      title: "Registrations by Event"
+      data_source: "Registration"
+      group_by: "eventId"
+
+    - type: "line_chart"
+      title: "Driver Performance"
+      data_source: "Result"
+      group_by: "registrationId.driverId"
+      x_axis: "stageId"
+      y_axis: "netTime"
+
+    - type: "pie_chart"
+      title: "Vehicles by Category"
+      data_source: "Vehicle"
+      group_by: "categoryId"
+
+    - type: "kpi"
+      title: "Active Events"
+      data_source: "Event"
+      operation: "count"
+      filter: "status == 'InProgress'"
+
+    - type: "kpi"
+      title: "Total Participants"
+      data_source: "Participant"
+      operation: "count"
+
+    - type: "kpi"
+      title: "Completed Stages"
+      data_source: "Stage"
+      operation: "count"
+      filter: "startDateTime < now() && event.status == 'InProgress'"

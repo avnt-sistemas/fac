@@ -1,0 +1,66 @@
+import 'dart:convert';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:{{ app_name }}/data/models/{{ module_snake }}_model.dart';
+import 'package:{{ app_name }}/domain/entities/{{ module_snake }}.dart';
+
+import '../../helpers/fixture_reader.dart';
+
+void main() {
+  final {{ module_pascal }}Model t{{ module_pascal }}Model = {{ module_pascal }}Model(
+    id: '1',
+    {% for field in module.fields %}
+    {{ field.name }}: {% if field.type == 'String' %}'Teste {{ field.name }}'{% elif field.type == 'int' %}1{% elif field.type == 'double' %}1.0{% elif field.type == 'bool' %}true{% elif field.type.startswith('List') %}[]{% elif field.type == 'DateTime' %}DateTime.parse('2023-01-01'){% else %}null{% endif %},
+    {% endfor %}
+  );
+
+  test('should be a subclass of {{ module_pascal }} entity', () {
+    // assert
+    expect(t{{ module_pascal }}Model, isA<{{ module_pascal }}>());
+  });
+
+  group('fromJson', () {
+    test('should return a valid model when the JSON contains all fields', () {
+      // arrange
+      final Map<String, dynamic> jsonMap = json.decode(fixture('{{ module_snake }}.json'));
+      // act
+      final result = {{ module_pascal }}Model.fromJson(jsonMap);
+      // assert
+      expect(result, t{{ module_pascal }}Model);
+    });
+
+    test('should return default values when optional fields are missing', () {
+      // arrange
+      final Map<String, dynamic> jsonMap = {
+        'id': '1',
+        {% for field in module.fields %}
+        {% if field.required %}
+        '{{ field.name }}': {% if field.type == 'String' %}'Teste {{ field.name }}'{% elif field.type == 'int' %}1{% elif field.type == 'double' %}1.0{% elif field.type == 'bool' %}true{% elif field.type.startswith('List') %}[]{% elif field.type == 'DateTime' %}'2023-01-01'{% else %}null{% endif %},
+        {% endif %}
+        {% endfor %}
+      };
+      // act
+      final result = {{ module_pascal }}Model.fromJson(jsonMap);
+      // assert
+      {% for field in module.fields %}
+      {% if not field.required %}
+      expect(result.{{ field.name }}, {% if field.type == 'String' %}''{% elif field.type == 'int' %}0{% elif field.type == 'double' %}0.0{% elif field.type == 'bool' %}false{% elif field.type.startswith('List') %}isEmpty{% elif field.type == 'DateTime' %}isNull{% else %}isNull{% endif %});
+      {% endif %}
+      {% endfor %}
+    });
+  });
+
+  group('toJson', () {
+    test('should return a JSON map containing the proper data', () {
+      // act
+      final result = t{{ module_pascal }}Model.toJson();
+      // assert
+      final expectedJson = {
+        'id': '1',
+        {% for field in module.fields %}
+        '{{ field.name }}': {% if field.type == 'String' %}'Teste {{ field.name }}'{% elif field.type == 'int' %}1{% elif field.type == 'double' %}1.0{% elif field.type == 'bool' %}true{% elif field.type.startswith('List') %}[]{% elif field.type == 'DateTime' %}'2023-01-01T00:00:00.000'{% else %}null{% endif %},
+        {% endfor %}
+      };
+      expect(result, expectedJson);
+    });
+  });
+}

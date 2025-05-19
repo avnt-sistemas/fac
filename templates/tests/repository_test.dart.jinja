@@ -1,0 +1,159 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+import 'package:dartz/dartz.dart';
+import 'package:{{ app_name }}/core/errors/exceptions.dart';
+import 'package:{{ app_name }}/core/errors/failures.dart';
+import 'package:{{ app_name }}/data/datasources/{{ module_snake }}_data_source.dart';
+import 'package:{{ app_name }}/data/models/{{ module_snake }}_model.dart';
+import 'package:{{ app_name }}/data/repositories/{{ module_snake }}_repository_impl.dart';
+import 'package:{{ app_name }}/domain/entities/{{ module_snake }}.dart';
+
+import '../../helpers/mocks.dart';
+
+void main() {
+  {{ module_pascal }}RepositoryImpl repository;
+  Mock{{ module_pascal }}DataSource mockDataSource;
+
+  setUp(() {
+    mockDataSource = Mock{{ module_pascal }}DataSource();
+    repository = {{ module_pascal }}RepositoryImpl(
+      dataSource: mockDataSource,
+    );
+  });
+
+  final t{{ module_pascal }}Model = {{ module_pascal }}Model(
+    id: '1',
+    {% for field in module.fields %}
+    {{ field.name }}: {% if field.type == 'String' %}'Teste {{ field.name }}'{% elif field.type == 'int' %}1{% elif field.type == 'double' %}1.0{% elif field.type == 'bool' %}true{% elif field.type.startswith('List') %}[]{% elif field.type == 'DateTime' %}DateTime.parse('2023-01-01'){% else %}null{% endif %},
+    {% endfor %}
+  );
+
+  final {{ module_pascal }} t{{ module_pascal }} = t{{ module_pascal }}Model;
+  final List<{{ module_pascal }}Model> t{{ module_pascal }}List = [t{{ module_pascal }}Model];
+
+  group('getAll', () {
+    test('should return a list of {{ module_pascal }} when call to data source is successful', () async {
+      // arrange
+      when(mockDataSource.getAll())
+          .thenAnswer((_) async => t{{ module_pascal }}List);
+      // act
+      final result = await repository.getAll();
+      // assert
+      verify(mockDataSource.getAll());
+      expect(result, equals(Right(t{{ module_pascal }}List)));
+    });
+
+    test('should return a ServerFailure when call to data source is unsuccessful', () async {
+      // arrange
+      when(mockDataSource.getAll())
+          .thenThrow(ServerException());
+      // act
+      final result = await repository.getAll();
+      // assert
+      verify(mockDataSource.getAll());
+      expect(result, equals(Left(ServerFailure())));
+    });
+  });
+
+  group('getById', () {
+    final String tId = '1';
+
+    test('should return {{ module_pascal }} entity when call to data source is successful', () async {
+      // arrange
+      when(mockDataSource.getById(any))
+          .thenAnswer((_) async => t{{ module_pascal }}Model);
+      // act
+      final result = await repository.getById(tId);
+      // assert
+      verify(mockDataSource.getById(tId));
+      expect(result, equals(Right(t{{ module_pascal }})));
+    });
+
+    test('should return a ServerFailure when call to data source is unsuccessful', () async {
+      // arrange
+      when(mockDataSource.getById(any))
+          .thenThrow(ServerException());
+      // act
+      final result = await repository.getById(tId);
+      // assert
+      verify(mockDataSource.getById(tId));
+      expect(result, equals(Left(ServerFailure())));
+    });
+  });
+
+  group('save', () {
+    test('should save the {{ module_pascal }} to data source when call is successful', () async {
+      // arrange
+      when(mockDataSource.save(any))
+          .thenAnswer((_) async => t{{ module_pascal }}Model);
+      // act
+      final result = await repository.save(t{{ module_pascal }});
+      // assert
+      verify(mockDataSource.save(t{{ module_pascal }}Model));
+      expect(result, equals(Right(t{{ module_pascal }})));
+    });
+
+    test('should return a ServerFailure when call to data source is unsuccessful', () async {
+      // arrange
+      when(mockDataSource.save(any))
+          .thenThrow(ServerException());
+      // act
+      final result = await repository.save(t{{ module_pascal }});
+      // assert
+      verify(mockDataSource.save(t{{ module_pascal }}Model));
+      expect(result, equals(Left(ServerFailure())));
+    });
+  });
+
+  group('delete', () {
+    final String tId = '1';
+
+    test('should delete the {{ module_pascal }} from data source when call is successful', () async {
+      // arrange
+      when(mockDataSource.delete(any))
+          .thenAnswer((_) async => true);
+      // act
+      final result = await repository.delete(tId);
+      // assert
+      verify(mockDataSource.delete(tId));
+      expect(result, equals(Right(true)));
+    });
+
+    test('should return a ServerFailure when call to data source is unsuccessful', () async {
+      // arrange
+      when(mockDataSource.delete(any))
+          .thenThrow(ServerException());
+      // act
+      final result = await repository.delete(tId);
+      // assert
+      verify(mockDataSource.delete(tId));
+      expect(result, equals(Left(ServerFailure())));
+    });
+  });
+
+  group('search', () {
+    final String tQuery = 'test';
+
+    test('should return a list of {{ module_pascal }} when call is successful', () async {
+      // arrange
+      when(mockDataSource.search(any))
+          .thenAnswer((_) async => t{{ module_pascal }}List);
+      // act
+      final result = await repository.search(tQuery);
+      // assert
+      verify(mockDataSource.search(tQuery));
+      expect(result, equals(Right(t{{ module_pascal }}List)));
+    });
+
+    test('should return a ServerFailure when call to data source is unsuccessful', () async {
+      // arrange
+      when(mockDataSource.search(any))
+          .thenThrow(ServerException());
+      // act
+      final result = await repository.search(tQuery);
+      // assert
+      verify(mockDataSource.search(tQuery));
+      expect(result, equals(Left(ServerFailure())));
+    });
+  });
+}

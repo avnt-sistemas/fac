@@ -1,0 +1,97 @@
+/// Schema definition for SQLite tables
+class SQLiteSchema {
+  /// Generate CREATE TABLE statement for a module
+  static String createTableStatement(String moduleName, List<Map<String, dynamic>> fields, {bool softDelete = false}) {
+    final columnDefinitions = _generateColumns(fields);
+
+    String statement = '''
+CREATE TABLE ${moduleName.toLowerCase()} (
+  id TEXT PRIMARY KEY,
+${columnDefinitions.join(',\n')}
+)
+''';
+
+    return statement;
+  }
+
+  /// Generate column definitions
+  static List<String> _generateColumns(List<Map<String, dynamic>> fields) {
+    final columns = <String>[];
+
+    // Add all field columns
+    for (final field in fields) {
+      final column = _generateColumn(field);
+      columns.add(column);
+    }
+
+    // Add standard timestamps
+    columns.add('  createdAt TEXT NOT NULL');
+    columns.add('  updatedAt TEXT NOT NULL');
+
+    return columns;
+  }
+
+  /// Generate a single column definition
+  static String _generateColumn(Map<String, dynamic> field) {
+    final String name = field['name'];
+    final String type = _getSqlType(field['type']);
+    final bool required = field['required'] ?? false;
+
+    return '  $name $type${required ? ' NOT NULL' : ''}';
+  }
+
+  /// Convert Dart types to SQLite types
+  static String _getSqlType(String dartType) {
+    switch (dartType) {
+      case 'String':
+        return 'TEXT';
+      case 'int':
+        return 'INTEGER';
+      case 'double':
+        return 'REAL';
+      case 'bool':
+        return 'INTEGER';
+      case 'DateTime':
+        return 'TEXT';
+      default:
+        if (dartType.startswith('List')) {
+          return 'TEXT'; // Lists are stored as JSON
+        } else {
+          return 'TEXT'; // Default to TEXT for complex types
+        }
+    }
+  }
+
+  /// Generate statements to add a unique constraint
+  static String createUniqueIndex(String tableName, String columnName) {
+    return 'CREATE UNIQUE INDEX idx_${tableName.toLowerCase()}_$columnName ON ${tableName.toLowerCase()}($columnName)';
+  }
+
+  /// Generate ALTER TABLE statement to add a column
+  static String addColumnStatement(String tableName, Map<String, dynamic> field) {
+    final String name = field['name'];
+    final String type = _getSqlType(field['type']);
+    final bool required = field['required'] ?? false;
+    final String defaultValue = _getDefaultValue(field);
+
+    return 'ALTER TABLE ${tableName.toLowerCase()} ADD COLUMN $name $type${required ? ' NOT NULL' : ''}${defaultValue.isNotEmpty ? ' DEFAULT $defaultValue' : ''}';
+  }
+
+  /// Get default value for a column based on its type
+  static String _getDefaultValue(Map<String, dynamic> field) {
+    if (field.containsKey('default')) {
+      final defaultValue = field['default'];
+      final String type = field['type'];
+
+      if (type == 'String') {
+        return "'$defaultValue'";
+      } else if (type == 'bool') {
+        return defaultValue ? '1' : '0';
+      } else {
+        return defaultValue.toString();
+      }
+    }
+
+    return '';
+  }
+}

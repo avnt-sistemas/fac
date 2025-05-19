@@ -1,0 +1,55 @@
+import 'package:flutter/material.dart';
+import '../../../../app/theme/dimensions.dart';
+
+class SocialLoginButtons extends StatelessWidget {
+  final VoidCallback onGoogleLogin;
+  final VoidCallback onAppleLogin;
+
+  const SocialLoginButtons({
+    Key? key,
+    required this.onGoogleLogin,
+    required this.onAppleLogin,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ElevatedButton.icon(
+          onPressed: onGoogleLogin,
+          icon: Image.asset(
+            'assets/images/google_logo.png',
+            height: 24,
+          ),
+          label: const Text('Continue with Google'),
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.black,
+            backgroundColor: Colors.white,
+            elevation: 1,
+            padding: const EdgeInsets.symmetric(
+              vertical: 12,
+              horizontal: 16,
+            ),
+            minimumSize: const Size(double.infinity, 50),
+          ),
+        ),
+        const SizedBox(height: Dimensions.marginM),
+        ElevatedButton.icon(
+          onPressed: onAppleLogin,
+          icon: const Icon(Icons.apple, size: 24),
+          label: const Text('Continue with Apple'),
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white,
+            backgroundColor: Colors.black,
+            elevation: 1,
+            padding: const EdgeInsets.symmetric(
+              vertical: 12,
+              horizontal: 16,
+            ),
+            minimumSize: const Size(double.infinity, 50),
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -1,0 +1,45 @@
+import 'package:flutter/material.dart';
+
+class AppColors {
+  // Primary color
+  static Color primary = HexColor.fromHex('{{ primary_color }}');
+
+  // Secondary color
+  static Color secondary = HexColor.fromHex('{{ secondary_color }}');
+
+  // Accent color
+  static Color accent = HexColor.fromHex('{{ accent_color }}');
+
+  // Success color
+  static Color success = Colors.green[600]!;
+
+  // Warning color
+  static Color warning = Colors.orange[600]!;
+
+  // Error color
+  static Color error = Colors.red[600]!;
+
+  // Info color
+  static Color info = Colors.blue[600]!;
+
+  // Text colors
+  static Color textPrimary = Colors.grey[900]!;
+  static Color textSecondary = Colors.grey[700]!;
+  static Color textTertiary = Colors.grey[500]!;
+}
+
+// Extension to convert HEX color strings to Color objects
+extension HexColor on Color {
+  static Color fromHex(String hexString) {
+    final buffer = StringBuffer();
+    if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
+    buffer.write(hexString.replaceFirst('#', ''));
+    return Color(int.parse(buffer.toString(), radix: 16));
+  }
+
+  String toHex({bool leadingHashSign = true}) => '${leadingHashSign ? '#' : ''}'
+      '${alpha.toRadixString(16).padLeft(2, '0')}'
+      '${red.toRadixString(16).padLeft(2, '0')}'
+      '${green.toRadixString(16).padLeft(2, '0')}'
+      '${blue.toRadixString(16).padLeft(2, '0')}';
+}

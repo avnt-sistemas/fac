@@ -1,0 +1,322 @@
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
+import 'dart:convert';
+import '../../domain/repositories/i_auth_repository.dart';
+import '../../domain/entities/user_entity.dart';
+import '../models/user_model.dart';
+import '../../../../core/errors/app_exception.dart';
+
+/// Local implementation of the auth repository using SharedPreferences
+class AuthRepositoryImpl implements IAuthRepository {
+  static const String _usersKey = 'users';
+  static const String _currentUserKey = 'current_user';
+  final SharedPreferences _prefs;
+  final _uuid = const Uuid();
+
+  AuthRepositoryImpl({
+    required SharedPreferences prefs,
+  }) : _prefs = prefs;
+
+  @override
+  Future<UserEntity?> getCurrentUser() async {
+    final userId = _prefs.getString(_currentUserKey);
+
+    if (userId == null) {
+      return null;
+    }
+
+    return _getUserById(userId);
+  }
+
+  @override
+  Future<UserEntity> signInWithEmailAndPassword(String email, String password) async {
+    final usersJson = _prefs.getStringList(_usersKey) ?? [];
+
+    // Find user by email and password
+    for (final userJson in usersJson) {
+      final Map<String, dynamic> userData = json.decode(userJson);
+      final user = UserModel.fromJson(userData);
+
+      if (user.email == email) {
+        // Check password in metadata
+        final storedPassword = user.metadata?['password'];
+
+        if (storedPassword == _hashPassword(password)) {
+          // Update last login
+          final updatedUser = UserModel.fromJson({
+            ...userData,
+            'lastLoginAt': DateTime.now().toIso8601String(),
+          });
+
+          await _updateUser(updatedUser);
+          await _setCurrentUser(updatedUser.id);
+
+          return updatedUser.toEntity();
+        } else {
+          throw const AppException(
+            message: 'Wrong password.',
+            code: 'wrong-password',
+          );
+        }
+      }
+    }
+
+    throw const AppException(
+      message: 'No user found with this email.',
+      code: 'user-not-found',
+    );
+  }
+
+  @override
+  Future<UserEntity> registerWithEmailAndPassword(
+    String email,
+    String password,
+    String displayName
+  ) async {
+    final usersJson = _prefs.getStringList(_usersKey) ?? [];
+
+    // Check if email already exists
+    for (final userJson in usersJson) {
+      final userData = json.decode(userJson);
+      if (userData['email'] == email) {
+        throw const AppException(
+          message: 'The email address is already in use.',
+          code: 'email-already-in-use',
+        );
+      }
+    }
+
+    // Create new user
+    final userId = _uuid.v4();
+    final now = DateTime.now();
+
+    final newUser = UserModel(
+      id: userId,
+      email: email,
+      displayName: displayName,
+      emailVerified: false,
+      roles: ['user'],
+      metadata: {
+        'password': _hashPassword(password),
+      },
+      createdAt: now,
+      lastLoginAt: now,
+    );
+
+    // Save user
+    await _saveUser(newUser);
+    await _setCurrentUser(userId);
+
+    return newUser.toEntity();
+  }
+
+  @override
+  Future<void> signOut() async {
+    await _prefs.remove(_currentUserKey);
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    final usersJson = _prefs.getStringList(_usersKey) ?? [];
+
+    // Find user by email
+    for (final userJson in usersJson) {
+      final userData = json.decode(userJson);
+      if (userData['email'] == email) {
+        // In a real app, we would send an email
+        // For this mock implementation, we just reset the password to 'password'
+        final user = UserModel.fromJson(userData);
+        final updatedUser = UserModel(
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
+          photoUrl: user.photoUrl,
+          emailVerified: user.emailVerified,
+          roles: user.roles,
+          metadata: {
+            ...user.metadata ?? {},
+            'password': _hashPassword('password'),
+          },
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
+        );
+
+        await _updateUser(updatedUser);
+        return;
+      }
+    }
+
+    throw const AppException(
+      message: 'No user found with this email.',
+      code: 'user-not-found',
+    );
+  }
+
+  @override
+  Future<UserEntity> updateProfile({
+    String? displayName,
+    String? photoUrl,
+  }) async {
+    final userId = _prefs.getString(_currentUserKey);
+
+    if (userId == null) {
+      throw const UnauthorizedException(
+        message: 'User not authenticated',
+      );
+    }
+
+    final user = await _getUserById(userId);
+
+    if (user == null) {
+      throw const AppException(
+        message: 'User not found',
+        code: 'user-not-found',
+      );
+    }
+
+    // Update user
+    final userModel = UserModel.fromEntity(user);
+    final updatedUser = UserModel(
+      id: userModel.id,
+      email: userModel.email,
+      displayName: displayName ?? userModel.displayName,
+      photoUrl: photoUrl ?? userModel.photoUrl,
+      emailVerified: userModel.emailVerified,
+      roles: userModel.roles,
+      metadata: userModel.metadata,
+      createdAt: userModel.createdAt,
+      lastLoginAt: userModel.lastLoginAt,
+    );
+
+    await _updateUser(updatedUser);
+
+    return updatedUser.toEntity();
+  }
+
+  @override
+  Future<bool> isSignedIn() async {
+    return _prefs.getString(_currentUserKey) != null;
+  }
+
+  @override
+  Future<UserEntity> signInWithGoogle() async {
+    throw const AppException(
+      message: 'Social sign in is not supported in local auth mode',
+      code: 'social-sign-in-not-supported',
+    );
+  }
+
+  @override
+  Future<UserEntity> signInWithApple() async {
+    throw const AppException(
+      message: 'Social sign in is not supported in local auth mode',
+      code: 'social-sign-in-not-supported',
+    );
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    final userId = _prefs.getString(_currentUserKey);
+
+    if (userId == null) {
+      throw const UnauthorizedException(
+        message: 'User not authenticated',
+      );
+    }
+
+    await _deleteUser(userId);
+    await _prefs.remove(_currentUserKey);
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {
+    final userId = _prefs.getString(_currentUserKey);
+
+    if (userId == null) {
+      throw const UnauthorizedException(
+        message: 'User not authenticated',
+      );
+    }
+
+    final user = await _getUserById(userId);
+
+    if (user == null) {
+      throw const AppException(
+        message: 'User not found',
+        code: 'user-not-found',
+      );
+    }
+
+    // Mark user as verified (in a real app, we would send an email)
+    final userModel = UserModel.fromEntity(user);
+    final updatedUser = UserModel(
+      id: userModel.id,
+      email: userModel.email,
+      displayName: userModel.displayName,
+      photoUrl: userModel.photoUrl,
+      emailVerified: true,
+      roles: userModel.roles,
+      metadata: userModel.metadata,
+      createdAt: userModel.createdAt,
+      lastLoginAt: userModel.lastLoginAt,
+    );
+
+    await _updateUser(updatedUser);
+  }
+
+  // Helper methods
+  Future<void> _saveUser(UserModel user) async {
+    final usersJson = _prefs.getStringList(_usersKey) ?? [];
+    usersJson.add(json.encode(user.toJson()));
+    await _prefs.setStringList(_usersKey, usersJson);
+  }
+
+  Future<void> _updateUser(UserModel user) async {
+    final usersJson = _prefs.getStringList(_usersKey) ?? [];
+
+    final updatedUsersJson = usersJson.map((userJson) {
+      final userData = json.decode(userJson);
+      if (userData['id'] == user.id) {
+        return json.encode(user.toJson());
+      }
+      return userJson;
+    }).toList();
+
+    await _prefs.setStringList(_usersKey, updatedUsersJson);
+  }
+
+  Future<void> _deleteUser(String userId) async {
+    final usersJson = _prefs.getStringList(_usersKey) ?? [];
+
+    final updatedUsersJson = usersJson.where((userJson) {
+      final userData = json.decode(userJson);
+      return userData['id'] != userId;
+    }).toList();
+
+    await _prefs.setStringList(_usersKey, updatedUsersJson);
+  }
+
+  Future<void> _setCurrentUser(String userId) async {
+    await _prefs.setString(_currentUserKey, userId);
+  }
+
+  Future<UserEntity?> _getUserById(String userId) async {
+    final usersJson = _prefs.getStringList(_usersKey) ?? [];
+
+    for (final userJson in usersJson) {
+      final userData = json.decode(userJson);
+      if (userData['id'] == userId) {
+        return UserModel.fromJson(userData).toEntity();
+      }
+    }
+
+    return null;
+  }
+
+  String _hashPassword(String password) {
+    // In a real app, we would use a proper hashing algorithm
+    // For this mock implementation, we just return the password
+    // DO NOT use this in production!
+    return password;
+  }
+}

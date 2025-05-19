@@ -1,0 +1,283 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter/gestures.dart' as gesture;
+import '../controllers/auth_controller.dart';
+import '../widgets/auth_form_fields.dart';
+import '../../../../app/theme/dimensions.dart';
+import '../../../../core/widgets/loading_indicator.dart';
+
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({Key? key}) : super(key: key);
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _acceptTerms = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Create Account'),
+      ),
+      body: Consumer<AuthController>(
+        builder: (context, authController, child) {
+          if (authController.isLoading) {
+            return const LoadingIndicator(
+              message: 'Creating your account...',
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(Dimensions.paddingL),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: Dimensions.marginM),
+                  _buildHeader(),
+                  const SizedBox(height: Dimensions.marginL),
+                  if (authController.error != null) ...[
+                    _buildErrorMessage(authController.error!),
+                    const SizedBox(height: Dimensions.marginM),
+                  ],
+                  _buildNameField(),
+                  const SizedBox(height: Dimensions.marginM),
+                  _buildEmailField(),
+                  const SizedBox(height: Dimensions.marginM),
+                  _buildPasswordField(),
+                  const SizedBox(height: Dimensions.marginM),
+                  _buildConfirmPasswordField(),
+                  const SizedBox(height: Dimensions.marginM),
+                  _buildTermsCheckbox(),
+                  const SizedBox(height: Dimensions.marginL),
+                  _buildRegisterButton(),
+                  const SizedBox(height: Dimensions.marginM),
+                  _buildLoginLink(),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Create Account',
+          style: Theme.of(context).textTheme.headline5,
+        ),
+        const SizedBox(height: Dimensions.marginS),
+        Text(
+          'Please fill in the form to create your account',
+          style: Theme.of(context).textTheme.subtitle1?.copyWith(
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorMessage(String error) {
+    return Container(
+      padding: const EdgeInsets.all(Dimensions.paddingM),
+      decoration: BoxDecoration(
+        color: Colors.red.shade100,
+        borderRadius: BorderRadius.circular(Dimensions.radiusM),
+      ),
+      child: Text(
+        error,
+        style: TextStyle(
+          color: Colors.red.shade900,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNameField() {
+    return TextFormField(
+      controller: _nameController,
+      decoration: const InputDecoration(
+        labelText: 'Full Name',
+        hintText: 'Enter your full name',
+        prefixIcon: Icon(Icons.person),
+      ),
+      textInputAction: TextInputAction.next,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter your name';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildEmailField() {
+    return EmailFormField(
+      controller: _emailController,
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return PasswordFormField(
+      controller: _passwordController,
+      onChanged: (_) {
+        // Trigger validation when password changes
+        if (_confirmPasswordController.text.isNotEmpty) {
+          _formKey.currentState?.validate();
+        }
+      },
+    );
+  }
+
+  Widget _buildConfirmPasswordField() {
+    return PasswordFormField(
+      controller: _confirmPasswordController,
+      labelText: 'Confirm Password',
+      hintText: 'Confirm your password',
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please confirm your password';
+        }
+        if (value != _passwordController.text) {
+          return 'Passwords do not match';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildTermsCheckbox() {
+    return Row(
+      children: [
+        Checkbox(
+          value: _acceptTerms,
+          onChanged: (value) {
+            setState(() {
+              _acceptTerms = value ?? false;
+            });
+          },
+        ),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              text: 'I agree to the ',
+              children: [
+                TextSpan(
+                  text: 'Terms of Service',
+                  style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  recognizer: gesture.TapGestureRecognizer()
+                    ..onTap = () {
+                      // Show terms and conditions
+                    },
+                ),
+                const TextSpan(text: ' and '),
+                TextSpan(
+                  text: 'Privacy Policy',
+                  style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  recognizer: gesture.TapGestureRecognizer()
+                    ..onTap = () {
+                      // Show privacy policy
+                    },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    return ElevatedButton(
+      onPressed: _acceptTerms ? _handleRegister : null,
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+      ),
+      child: const Text(
+        'Create Account',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoginLink() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text('Already have an account?'),
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: const Text('Sign In'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleRegister() async {
+    if (_formKey.currentState!.validate()) {
+      final authController = Provider.of<AuthController>(context, listen: false);
+
+      final success = await authController.registerWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text,
+        _nameController.text.trim(),
+      );
+
+      if (success && mounted) {
+        // Show success dialog and navigate to verification screen or dashboard
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Account Created'),
+            content: const Text(
+              'Your account has been created successfully. '
+              'Please verify your email address to complete the registration process.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.pushReplacementNamed(context, '/dashboard');
+                },
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+}

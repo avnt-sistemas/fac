@@ -1,0 +1,152 @@
+import 'package:sqflite/sqflite.dart';
+
+/// Helper class for handling relationships between entities in SQLite
+class SQLiteRelationshipHelper {
+  final Database _db;
+
+  SQLiteRelationshipHelper(this._db);
+
+  /// Fetch a list of related entities (one-to-many relationship)
+  Future<List<Map<String, dynamic>>> getRelatedEntities({
+    required String relatedTable,
+    required String foreignKey,
+    required String foreignValue,
+  }) async {
+    return await _db.query(
+      relatedTable,
+      where: '$foreignKey = ?',
+      whereArgs: [foreignValue],
+    );
+  }
+
+  /// Fetch a single related entity (many-to-one relationship)
+  Future<Map<String, dynamic>?> getRelatedEntity({
+    required String relatedTable,
+    required String id,
+  }) async {
+    final results = await _db.query(
+      relatedTable,
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+
+    if (results.isEmpty) {
+      return null;
+    }
+
+    return results.first;
+  }
+
+  /// Fetch many-to-many relationships using a junction table
+  Future<List<Map<String, dynamic>>> getManyToManyRelatedEntities({
+    required String targetTable,
+    required String junctionTable,
+    required String sourceIdColumn,
+    required String targetIdColumn,
+    required String sourceId,
+  }) async {
+    // First get all relations from the junction table
+    final junctionResults = await _db.query(
+      junctionTable,
+      where: '$sourceIdColumn = ?',
+      whereArgs: [sourceId],
+    );
+
+    // No relations found
+    if (junctionResults.isEmpty) {
+      return [];
+    }
+
+    // Extract target IDs
+    final targetIds = junctionResults.map((e) => e[targetIdColumn]).toList();
+
+    // Build the query for target entities
+    String questionMarks = List.filled(targetIds.length, '?').join(',');
+
+    // Fetch all related entities
+    return await _db.query(
+      targetTable,
+      where: 'id IN ($questionMarks)',
+      whereArgs: targetIds,
+    );
+  }
+
+  /// Create a many-to-many relationship
+  Future<void> createManyToManyRelationship({
+    required String junctionTable,
+    required String sourceIdColumn,
+    required String targetIdColumn,
+    required String sourceId,
+    required String targetId,
+  }) async {
+    await _db.insert(
+      junctionTable,
+      {
+        sourceIdColumn: sourceId,
+        targetIdColumn: targetId,
+        'createdAt': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Delete a many-to-many relationship
+  Future<void> deleteManyToManyRelationship({
+    required String junctionTable,
+    required String sourceIdColumn,
+    required String targetIdColumn,
+    required String sourceId,
+    required String targetId,
+  }) async {
+    await _db.delete(
+      junctionTable,
+      where: '$sourceIdColumn = ? AND $targetIdColumn = ?',
+      whereArgs: [sourceId, targetId],
+    );
+  }
+
+  /// Delete all many-to-many relationships for an entity
+  Future<void> deleteAllRelationships({
+    required String junctionTable,
+    required String idColumn,
+    required String id,
+  }) async {
+    await _db.delete(
+      junctionTable,
+      where: '$idColumn = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Update many-to-many relationships
+  Future<void> updateManyToManyRelationships({
+    required String junctionTable,
+    required String sourceIdColumn,
+    required String targetIdColumn,
+    required String sourceId,
+    required List<String> targetIds,
+  }) async {
+    // Use a transaction to ensure atomicity
+    await _db.transaction((txn) async {
+      // Delete all existing relationships
+      await txn.delete(
+        junctionTable,
+        where: '$sourceIdColumn = ?',
+        whereArgs: [sourceId],
+      );
+
+      // Create new relationships
+      for (final targetId in targetIds) {
+        await txn.insert(
+          junctionTable,
+          {
+            sourceIdColumn: sourceId,
+            targetIdColumn: targetId,
+            'createdAt': DateTime.now().toIso8601String(),
+          },
+        );
+      }
+    });
+  }
+}

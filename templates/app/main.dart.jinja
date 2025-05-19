@@ -1,0 +1,31 @@
+import 'app/database_initializer.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'app/app.dart';
+
+{%- if has_auth %}
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+{%- endif %}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Set preferred orientations
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+{%- if has_auth %}
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+{%- endif %}
+
+  // Initialize SQLite database
+  final database = await DatabaseInitializer.initializeDatabase();
+
+  runApp(MyApp(database: database));
+}

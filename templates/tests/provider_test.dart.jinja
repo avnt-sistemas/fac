@@ -1,0 +1,190 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+import 'package:dartz/dartz.dart';
+import 'package:{{ app_name }}/core/errors/failures.dart';
+import 'package:{{ app_name }}/domain/entities/{{ module_snake }}.dart';
+import 'package:{{ app_name }}/domain/repositories/{{ module_snake }}_repository.dart';
+import 'package:{{ app_name }}/features/{{ module_snake }}/presentation/provider/{{ module_snake }}_provider.dart';
+
+import '../../../../helpers/mocks.dart';
+
+void main() {
+  {{ module_pascal }}Provider provider;
+  Mock{{ module_pascal }}Repository mockRepository;
+
+  setUp(() {
+    mockRepository = Mock{{ module_pascal }}Repository();
+    provider = {{ module_pascal }}Provider(repository: mockRepository);
+  });
+
+  final {{ module_pascal }} t{{ module_pascal }} = {{ module_pascal }}(
+    id: '1',
+    {% for field in module.fields %}
+    {{ field.name }}: {% if field.type == 'String' %}'Teste {{ field.name }}'{% elif field.type == 'int' %}1{% elif field.type == 'double' %}1.0{% elif field.type == 'bool' %}true{% elif field.type.startswith('List') %}[]{% elif field.type == 'DateTime' %}DateTime.parse('2023-01-01'){% else %}null{% endif %},
+    {% endfor %}
+  );
+  final List<{{ module_pascal }}> t{{ module_pascal }}List = [t{{ module_pascal }}];
+
+  group('loadAll', () {
+    test('should update state with loaded items when repository returns success', () async {
+      // arrange
+      when(mockRepository.getAll())
+          .thenAnswer((_) async => Right(t{{ module_pascal }}List));
+
+      // act
+      await provider.loadAll();
+
+      // assert
+      verify(mockRepository.getAll());
+      expect(provider.isLoading, false);
+      expect(provider.error, null);
+      expect(provider.items, t{{ module_pascal }}List);
+    });
+
+    test('should update state with error when repository returns failure', () async {
+      // arrange
+      when(mockRepository.getAll())
+          .thenAnswer((_) async => Left(ServerFailure()));
+
+      // act
+      await provider.loadAll();
+
+      // assert
+      verify(mockRepository.getAll());
+      expect(provider.isLoading, false);
+      expect(provider.error, isNotNull);
+      expect(provider.items, isEmpty);
+    });
+  });
+
+  group('getById', () {
+    final String tId = '1';
+
+    test('should return item when repository returns success', () async {
+      // arrange
+      when(mockRepository.getById(any))
+          .thenAnswer((_) async => Right(t{{ module_pascal }}));
+
+      // act
+      final result = await provider.getById(tId);
+
+      // assert
+      verify(mockRepository.getById(tId));
+      expect(result, t{{ module_pascal }});
+      expect(provider.error, null);
+    });
+
+    test('should set error and return null when repository returns failure', () async {
+      // arrange
+      when(mockRepository.getById(any))
+          .thenAnswer((_) async => Left(ServerFailure()));
+
+      // act
+      final result = await provider.getById(tId);
+
+      // assert
+      verify(mockRepository.getById(tId));
+      expect(result, null);
+      expect(provider.error, isNotNull);
+    });
+  });
+
+  group('save', () {
+    test('should update state with updated item when repository returns success', () async {
+      // arrange
+      when(mockRepository.save(any))
+          .thenAnswer((_) async => Right(t{{ module_pascal }}));
+
+      // act
+      await provider.save(t{{ module_pascal }});
+
+      // assert
+      verify(mockRepository.save(t{{ module_pascal }}));
+      expect(provider.isLoading, false);
+      expect(provider.error, null);
+    });
+
+    test('should update state with error when repository returns failure', () async {
+      // arrange
+      when(mockRepository.save(any))
+          .thenAnswer((_) async => Left(ServerFailure()));
+
+      // act
+      await provider.save(t{{ module_pascal }});
+
+      // assert
+      verify(mockRepository.save(t{{ module_pascal }}));
+      expect(provider.isLoading, false);
+      expect(provider.error, isNotNull);
+    });
+  });
+
+  group('delete', () {
+    final String tId = '1';
+
+    test('should update state with items without deleted item when repository returns success', () async {
+      // arrange
+      provider.items = t{{ module_pascal }}List;
+      when(mockRepository.delete(any))
+          .thenAnswer((_) async => const Right(true));
+
+      // act
+      await provider.delete(tId);
+
+      // assert
+      verify(mockRepository.delete(tId));
+      expect(provider.isLoading, false);
+      expect(provider.error, null);
+      expect(provider.items, isEmpty);
+    });
+
+    test('should update state with error when repository returns failure', () async {
+      // arrange
+      provider.items = t{{ module_pascal }}List;
+      when(mockRepository.delete(any))
+          .thenAnswer((_) async => Left(ServerFailure()));
+
+      // act
+      await provider.delete(tId);
+
+      // assert
+      verify(mockRepository.delete(tId));
+      expect(provider.isLoading, false);
+      expect(provider.error, isNotNull);
+      expect(provider.items, t{{ module_pascal }}List);
+    });
+  });
+
+  group('search', () {
+    final String tQuery = 'test';
+
+    test('should update state with filtered items when repository returns success', () async {
+      // arrange
+      when(mockRepository.search(any))
+          .thenAnswer((_) async => Right(t{{ module_pascal }}List));
+
+      // act
+      await provider.search(tQuery);
+
+      // assert
+      verify(mockRepository.search(tQuery));
+      expect(provider.isLoading, false);
+      expect(provider.error, null);
+      expect(provider.items, t{{ module_pascal }}List);
+    });
+
+    test('should update state with error when repository returns failure', () async {
+      // arrange
+      when(mockRepository.search(any))
+          .thenAnswer((_) async => Left(ServerFailure()));
+
+      // act
+      await provider.search(tQuery);
+
+      // assert
+      verify(mockRepository.search(tQuery));
+      expect(provider.isLoading, false);
+      expect(provider.error, isNotNull);
+    });
+  });
+}

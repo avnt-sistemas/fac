@@ -1,0 +1,6 @@
+{
+  "id": "1",
+  {% for field in module.fields %}
+  "{{ field.name }}": {% if field.type == 'String' %}"Teste {{ field.name }}"{% elif field.type == 'int' %}1{% elif field.type == 'double' %}1.0{% elif field.type == 'bool' %}true{% elif field.type.startswith('List') %}[]{% elif field.type == 'DateTime' %}"2023-01-01"{% else %}null{% endif %}{% if not loop.last %},{% endif %}
+  {% endfor %}
+}

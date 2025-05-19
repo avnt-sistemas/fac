@@ -1,0 +1,37 @@
+import '../entities/{{ module_name|lower }}_entity.dart';
+
+/// Repository interface for {{ pascal_case }}
+abstract class I{{ pascal_case }}Repository {
+  /// Get all {{ pascal_case }} entities
+  Future<List<{{ pascal_case }}Entity>> getAll({% if soft_delete %}{bool includeSoftDeleted = false}{% endif %});
+
+  /// Get {{ pascal_case }} by id
+  Future<{{ pascal_case }}Entity?> getById(String id{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %});
+
+  /// Create a new {{ pascal_case }}
+  Future<{{ pascal_case }}Entity> create({{ pascal_case }}Entity entity);
+
+  /// Update an existing {{ pascal_case }}
+  Future<{{ pascal_case }}Entity> update({{ pascal_case }}Entity entity);
+
+  /// Delete a {{ pascal_case }} by id
+{% if soft_delete %}  /// (soft delete - marks the record as deleted){% endif %}
+  Future<void> delete(String id);
+
+{% if soft_delete %}
+  /// Restore a soft-deleted {{ pascal_case }}
+  Future<void> restore(String id);
+
+  /// Hard delete a {{ pascal_case }} entity (permanently remove from database)
+  Future<void> hardDelete(String id);
+
+  /// Get all entities including soft-deleted ones
+  Future<List<{{ pascal_case }}Entity>> getAllWithDeleted();
+{% endif %}
+
+  /// Optional: Search for entities
+  // Future<List<{{ pascal_case }}Entity>> search(String query{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %});
+
+  /// Optional: Count total entities
+  // Future<int> count({% if soft_delete %}{bool includeSoftDeleted = false}{% endif %});
+}

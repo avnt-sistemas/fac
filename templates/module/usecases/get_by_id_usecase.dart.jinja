@@ -1,0 +1,15 @@
+import '../../domain/entities/{{ module_name|lower }}_entity.dart';
+import '../../domain/repositories/i_{{ module_name|lower }}_repository.dart';
+
+/// Use case to get {{ pascal_case }} by id
+class GetById{{ pascal_case }}UseCase {
+  final I{{ pascal_case }}Repository _repository;
+
+  GetById{{ pascal_case }}UseCase({required I{{ pascal_case }}Repository repository})
+      : _repository = repository;
+
+  /// Execute the use case
+  Future<{{ pascal_case }}Entity?> execute(String id{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %}) {
+    return _repository.getById(id{% if soft_delete %}, includeSoftDeleted: includeSoftDeleted{% endif %});
+  }
+}

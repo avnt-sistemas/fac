@@ -1,0 +1,85 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'theme/app_theme.dart';
+import 'routes.dart';
+{%- if has_auth %}
+import '../features/auth/presentation/controllers/auth_controller.dart';
+{%- endif %}
+{%- for module in modules %}
+import '../features/{{ module.name|lower }}/presentation/controllers/{{ module.name|lower }}_controller.dart';
+import '../features/{{ module.name|lower }}/data/repositories/{{ module.name|lower }}_repository_impl.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/get_all_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/get_by_id_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/create_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/update_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/delete_{{ module.name|lower }}_usecase.dart';
+{%- if module.soft_delete %}
+import '../features/{{ module.name|lower }}/domain/usecases/restore_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/hard_delete_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/get_all_with_deleted_{{ module.name|lower }}_usecase.dart';
+{%- endif %}
+{%- endfor %}
+import 'package:sqflite/sqflite.dart';
+
+class MyApp extends StatelessWidget {
+  final Database database;
+
+  const MyApp({Key? key, required this.database}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+{%- if has_auth %}
+        ChangeNotifierProvider(create: (_) => AuthController()),
+{%- endif %}
+{%- for module in modules %}
+        ChangeNotifierProvider(
+          create: (_) {
+            // Criar repositório uma vez para reutilizar
+            final repository = {{ module.name }}RepositoryImpl(database: database);
+
+            return {{ module.name }}Controller(
+              getAllUseCase: GetAll{{ module.name }}UseCase(
+                repository: repository,
+              ),
+              getByIdUseCase: GetById{{ module.name }}UseCase(
+                repository: repository,
+              ),
+              createUseCase: Create{{ module.name }}UseCase(
+                repository: repository,
+              ),
+              updateUseCase: Update{{ module.name }}UseCase(
+                repository: repository,
+              ),
+              deleteUseCase: Delete{{ module.name }}UseCase(
+                repository: repository,
+              ),
+{%- if module.soft_delete %}
+              restoreUseCase: Restore{{ module.name }}UseCase(
+                repository: repository,
+              ),
+              hardDeleteUseCase: HardDelete{{ module.name }}UseCase(
+                repository: repository,
+              ),
+              getAllWithDeletedUseCase: GetAllWithDeleted{{ module.name }}UseCase(
+                repository: repository,
+              ),
+{%- endif %}
+            );
+          },
+        ),
+{%- endfor %}
+      ],
+      child: MaterialApp(
+        title: '{{ app_name }}',
+        theme: AppTheme.lightTheme(),
+        darkTheme: AppTheme.darkTheme(),
+        themeMode: ThemeMode.system,
+        initialRoute: AppRoutes.initial,
+        routes: AppRoutes.routes,
+        debugShowCheckedModeBanner: false,
+      ),
+    );
+  }
+}

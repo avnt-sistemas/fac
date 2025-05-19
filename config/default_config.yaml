@@ -1,0 +1,40 @@
+app:
+  name: "Events Rally Manager App"
+  package: "br.com.avnt.events_rally_manager"
+  description: "Flutter application generated with Flutter App Creator"
+
+theme:
+  primary_color: "#1976D2"
+  secondary_color: "#424242"
+  accent_color: "#FF4081"
+  font_family: "Roboto"
+
+auth:
+  enabled: false
+  provider: "firebase"
+
+persistence:
+  enabled: true
+  provider: "sqlite"
+
+modules:
+  - name: "Task"
+    fields:
+      - name: "title"
+        type: "String"
+        required: true
+      - name: "description"
+        type: "String"
+      - name: "completed"
+        type: "bool"
+        default: "false"
+      - name: "dueDate"
+        type: "DateTime?"
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+dashboard:
+  enabled: false

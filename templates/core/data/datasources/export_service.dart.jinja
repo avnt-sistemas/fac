@@ -1,0 +1,282 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:excel/excel.dart';
+import 'package:csv/csv.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
+
+/// Service for exporting database data to various formats
+class ExportService {
+  final Database _database;
+
+  ExportService(this._database);
+
+  /// Export data from a table to CSV
+  Future<String> exportToCsv(
+    String tableName, {
+    String? where,
+    List<Object?>? whereArgs,
+    String? orderBy,
+  }) async {
+    try {
+      // Get data from table
+      final List<Map<String, dynamic>> data = await _database.query(
+        tableName,
+        where: where,
+        whereArgs: whereArgs,
+        orderBy: orderBy,
+      );
+
+      if (data.isEmpty) {
+        return '';
+      }
+
+      // Get column names from first row
+      final List<String> columns = data.first.keys.toList();
+
+      // Convert data to list of lists for CSV
+      final List<List<dynamic>> rows = [
+        // Header row
+        columns,
+        // Data rows
+        ...data.map((row) => columns.map((col) => _formatValueForExport(row[col])).toList()),
+      ];
+
+      // Convert to CSV
+      final csvString = const ListToCsvConverter().convert(rows);
+
+      // Save to file
+      final file = await _saveToFile('$tableName.csv', csvString);
+
+      return file.path;
+    } catch (e) {
+      throw Exception('Failed to export CSV: $e');
+    }
+  }
+
+  /// Export data from a table to Excel
+  Future<String> exportToExcel(
+    String tableName, {
+    String? where,
+    List<Object?>? whereArgs,
+    String? orderBy,
+  }) async {
+    try {
+      // Get data from table
+      final List<Map<String, dynamic>> data = await _database.query(
+        tableName,
+        where: where,
+        whereArgs: whereArgs,
+        orderBy: orderBy,
+      );
+
+      if (data.isEmpty) {
+        throw Exception('No data to export');
+      }
+
+      // Create Excel workbook
+      final excel = Excel.createExcel();
+      final sheet = excel[tableName];
+
+      // Get column names from first row
+      final List<String> columns = data.first.keys.toList();
+
+      // Add header row
+      for (var i = 0; i < columns.length; i++) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+          ..value = columns[i]
+          ..cellStyle = CellStyle(
+            bold: true,
+            horizontalAlign: HorizontalAlign.Center,
+          );
+      }
+
+      // Add data rows
+      for (var rowIndex = 0; rowIndex < data.length; rowIndex++) {
+        final row = data[rowIndex];
+        for (var colIndex = 0; colIndex < columns.length; colIndex++) {
+          final value = _formatValueForExport(row[columns[colIndex]]);
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex, rowIndex: rowIndex + 1))
+            ..value = value;
+        }
+      }
+
+      // Ajustar largura das colunas - usando a abordagem correta com base na API atual
+      try {
+        // A API atual do excel usa o mapa columnWidths para definir as larguras
+        for (var i = 0; i < columns.length; i++) {
+          // Obter a largura máxima baseada no conteúdo
+          int maxWidth = columns[i].length;
+          for (var rowIndex = 0; rowIndex < data.length; rowIndex++) {
+            final cellValue = _formatValueForExport(data[rowIndex][columns[i]]).toString();
+            if (cellValue.length > maxWidth) {
+              maxWidth = cellValue.length;
+            }
+          }
+
+          // Definir a largura da coluna usando o mapa columnWidths
+          // Convertemos para unidades Excel aproximadas
+          final columnWidth = 10 + maxWidth / 3; // Aproximação grosseira
+
+          try {
+            sheet.getColWidths[i] = columnWidth;
+          } catch (_) {
+            // Falha silenciosa se não conseguir definir a largura
+          }
+        }
+      } catch (_) {
+        // Ignorar quaisquer erros relacionados ao ajuste de coluna
+      }
+
+      // Save to file
+      final bytes = excel.encode();
+      if (bytes == null) {
+        throw Exception('Failed to encode Excel file');
+      }
+
+      final file = await _saveBytesToFile('$tableName.xlsx', bytes);
+
+      return file.path;
+    } catch (e) {
+      throw Exception('Failed to export Excel: $e');
+    }
+  }
+
+  /// Export data from a table to PDF
+  Future<String> exportToPdf(
+    String tableName, {
+    String? where,
+    List<Object?>? whereArgs,
+    String? orderBy,
+    String title = '',
+  }) async {
+    try {
+      // Get data from table
+      final List<Map<String, dynamic>> data = await _database.query(
+        tableName,
+        where: where,
+        whereArgs: whereArgs,
+        orderBy: orderBy,
+      );
+
+      if (data.isEmpty) {
+        throw Exception('No data to export');
+      }
+
+      // Get column names from first row
+      final List<String> columns = data.first.keys.toList();
+
+      // Create PDF document
+      final pdf = pw.Document();
+
+      // Add title page
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return pw.Center(
+              child: pw.Column(
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                children: [
+                  pw.Text(
+                    title.isNotEmpty ? title : tableName,
+                    style: pw.TextStyle(
+                      fontSize: 24,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Text(
+                    'Exported on ${DateTime.now().toString().substring(0, 19)}',
+                    style: const pw.TextStyle(
+                      fontSize: 14,
+                    ),
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Total records: ${data.length}',
+                    style: const pw.TextStyle(
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+
+      // Add data table pages
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          orientation: pw.PageOrientation.landscape,
+          build: (pw.Context context) {
+            return pw.Table.fromTextArray(
+              context: context,
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              headerDecoration: const pw.BoxDecoration(
+                color: PdfColors.grey300,
+              ),
+              headers: columns,
+              data: data.map((row) =>
+                columns.map((col) => _formatValueForExport(row[col]).toString()).toList()
+              ).toList(),
+            );
+          },
+        ),
+      );
+
+      // Save to file
+      final bytes = await pdf.save();
+      final file = await _saveBytesToFile('$tableName.pdf', bytes);
+
+      return file.path;
+    } catch (e) {
+      throw Exception('Failed to export PDF: $e');
+    }
+  }
+
+  /// Share exported file
+  Future<void> shareFile(String filePath, {String? subject}) async {
+    final file = File(filePath);
+    if (await file.exists()) {
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: subject,
+      );
+    } else {
+      throw Exception('File not found: $filePath');
+    }
+  }
+
+  /// Format value for export (handle complex types)
+  dynamic _formatValueForExport(dynamic value) {
+    if (value == null) {
+      return '';
+    } else if (value is Map || value is List) {
+      return jsonEncode(value);
+    } else if (value is bool) {
+      return value ? 'Yes' : 'No';
+    } else {
+      return value.toString();
+    }
+  }
+
+  /// Save string content to a file
+  Future<File> _saveToFile(String fileName, String content) async {
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}/$fileName');
+    return await file.writeAsString(content);
+  }
+
+  /// Save bytes to a file
+  Future<File> _saveBytesToFile(String fileName, List<int> bytes) async {
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}/$fileName');
+    return await file.writeAsBytes(bytes);
+  }
+}

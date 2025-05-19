@@ -1,0 +1,57 @@
+import 'package:flutter/material.dart';
+
+{%- if has_dashboard %}
+import '../features/dashboard/presentation/screens/dashboard_screen.dart';
+{%- endif %}
+{%- if has_auth %}
+import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/auth/presentation/screens/register_screen.dart';
+import '../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../features/auth/presentation/screens/profile_screen.dart';
+{%- endif %}
+{%- for module in modules %}
+import '../features/{{ module.name|lower }}/presentation/screens/{{ module.name|lower }}_list_screen.dart';
+import '../features/{{ module.name|lower }}/presentation/screens/{{ module.name|lower }}_detail_screen.dart';
+import '../features/{{ module.name|lower }}/presentation/screens/{{ module.name|lower }}_create_screen.dart';
+import '../features/{{ module.name|lower }}/presentation/screens/{{ module.name|lower }}_edit_screen.dart';
+{%- endfor %}
+
+class AppRoutes {
+  static const String initial = {% if has_auth %}'{{ "/login" }}';{% else %}{% if has_dashboard %}'{{ "/dashboard" }}';{% else %}'/{{ modules[0].name|lower if modules else "" }}';{% endif %}{% endif %}
+
+  // Route names
+{%- if has_auth %}
+  static const String login = '/login';
+  static const String register = '/register';
+  static const String forgotPassword = '/forgot-password';
+  static const String profile = '/profile';
+{%- endif %}
+{%- if has_dashboard %}
+  static const String dashboard = '/dashboard';
+{%- endif %}
+{%- for module in modules %}
+  static const String {{ module.name|lower }}List = '/{{ module.name|lower }}';
+  static const String {{ module.name|lower }}Detail = '/{{ module.name|lower }}/detail';
+  static const String {{ module.name|lower }}Create = '/{{ module.name|lower }}/create';
+  static const String {{ module.name|lower }}Edit = '/{{ module.name|lower }}/edit';
+{%- endfor %}
+
+  // Route map
+  static Map<String, WidgetBuilder> get routes => {
+{%- if has_auth %}
+    login: (context) => const LoginScreen(),
+    register: (context) => const RegisterScreen(),
+    forgotPassword: (context) => const ForgotPasswordScreen(),
+    profile: (context) => const ProfileScreen(),
+{%- endif %}
+{%- if has_dashboard %}
+    dashboard: (context) => const DashboardScreen(),
+{%- endif %}
+{%- for module in modules %}
+    {{ module.name|lower }}List: (context) => const {{ module.name }}ListScreen(),
+    {{ module.name|lower }}Detail: (context) => const {{ module.name }}DetailScreen(),
+    {{ module.name|lower }}Create: (context) => const {{ module.name }}CreateScreen(),
+    {{ module.name|lower }}Edit: (context) => const {{ module.name }}EditScreen(),
+{%- endfor %}
+  };
+}

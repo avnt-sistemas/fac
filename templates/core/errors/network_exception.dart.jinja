@@ -1,0 +1,41 @@
+import 'dart:io';
+import 'app_exception.dart';
+
+/// Exception for network-related errors
+class NetworkException extends AppException {
+  const NetworkException({
+    String message = 'Network error occurred',
+    String? code = 'NETWORK_ERROR',
+    dynamic details,
+  }) : super(
+          message: message,
+          code: code,
+          details: details,
+        );
+
+  /// Factory method to create NetworkException from an error
+  factory NetworkException.fromError(dynamic error) {
+    if (error is SocketException) {
+      return const NetworkException(
+        message: 'No internet connection',
+        code: 'NO_INTERNET',
+      );
+    } else if (error is HttpException) {
+      return NetworkException(
+        message: 'HTTP error occurred: ${error.message}',
+        code: 'HTTP_ERROR',
+      );
+    } else if (error is FormatException) {
+      return NetworkException(
+        message: 'Invalid response format: ${error.message}',
+        code: 'FORMAT_ERROR',
+      );
+    } else {
+      return NetworkException(
+        message: 'Unknown network error: ${error.toString()}',
+        code: 'UNKNOWN',
+        details: error,
+      );
+    }
+  }
+}

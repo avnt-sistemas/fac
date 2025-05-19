@@ -1,0 +1,100 @@
+import 'package:flutter/material.dart';
+
+class EmailFormField extends StatelessWidget {
+  final TextEditingController controller;
+  final bool autofocus;
+  final ValueChanged<String>? onChanged;
+
+  const EmailFormField({
+    Key? key,
+    required this.controller,
+    this.autofocus = false,
+    this.onChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      decoration: const InputDecoration(
+        labelText: 'Email',
+        hintText: 'Enter your email address',
+        prefixIcon: Icon(Icons.email),
+      ),
+      keyboardType: TextInputType.emailAddress,
+      textInputAction: TextInputAction.next,
+      autofocus: autofocus,
+      onChanged: onChanged,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter your email';
+        }
+        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+          return 'Please enter a valid email address';
+        }
+        return null;
+      },
+    );
+  }
+}
+
+class PasswordFormField extends StatefulWidget {
+  final TextEditingController controller;
+  final String labelText;
+  final String hintText;
+  final bool autofocus;
+  final ValueChanged<String>? onChanged;
+  final FormFieldValidator<String>? validator;
+
+  const PasswordFormField({
+    Key? key,
+    required this.controller,
+    this.labelText = 'Password',
+    this.hintText = 'Enter your password',
+    this.autofocus = false,
+    this.onChanged,
+    this.validator,
+  }) : super(key: key);
+
+  @override
+  State<PasswordFormField> createState() => _PasswordFormFieldState();
+}
+
+class _PasswordFormFieldState extends State<PasswordFormField> {
+  bool _obscureText = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: widget.controller,
+      obscureText: _obscureText,
+      decoration: InputDecoration(
+        labelText: widget.labelText,
+        hintText: widget.hintText,
+        prefixIcon: const Icon(Icons.lock),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscureText ? Icons.visibility : Icons.visibility_off,
+          ),
+          onPressed: () {
+            setState(() {
+              _obscureText = !_obscureText;
+            });
+          },
+        ),
+      ),
+      textInputAction: TextInputAction.done,
+      autofocus: widget.autofocus,
+      onChanged: widget.onChanged,
+      validator: widget.validator ?? (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter your password';
+        }
+        if (value.length < 6) {
+          return 'Password must be at least 6 characters';
+        }
+        return null;
+      },
+    );
+  }
+}

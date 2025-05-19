@@ -1,0 +1,44 @@
+import '../../domain/entities/user_entity.dart';
+
+/// Repository interface for authentication operations
+abstract class IAuthRepository {
+  /// Get the currently authenticated user
+  Future<UserEntity?> getCurrentUser();
+
+  /// Sign in with email and password
+  Future<UserEntity> signInWithEmailAndPassword(String email, String password);
+
+  /// Register with email and password
+  Future<UserEntity> registerWithEmailAndPassword(
+    String email,
+    String password,
+    String displayName
+  );
+
+  /// Sign out the current user
+  Future<void> signOut();
+
+  /// Send password reset email
+  Future<void> sendPasswordResetEmail(String email);
+
+  /// Update user profile information
+  Future<UserEntity> updateProfile({
+    String? displayName,
+    String? photoUrl,
+  });
+
+  /// Check if a user is signed in
+  Future<bool> isSignedIn();
+
+  /// Sign in with Google
+  Future<UserEntity> signInWithGoogle();
+
+  /// Sign in with Apple
+  Future<UserEntity> signInWithApple();
+
+  /// Delete user account
+  Future<void> deleteAccount();
+
+  /// Verify email
+  Future<void> sendEmailVerification();
+}

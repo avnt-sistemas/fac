@@ -1,0 +1,180 @@
+import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import '../../../../app/theme/app_colors.dart';
+
+class BarChartWidget extends StatefulWidget {
+  final String dataSource;
+  final String groupBy;
+
+  const BarChartWidget({
+    Key? key,
+    required this.dataSource,
+    required this.groupBy,
+  }) : super(key: key);
+
+  @override
+  State<BarChartWidget> createState() => _BarChartWidgetState();
+}
+
+class _BarChartWidgetState extends State<BarChartWidget> {
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<dynamic>>(
+      future: _fetchData(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: TextStyle(color: AppColors.error),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(
+            child: Text('No data available'),
+          );
+        }
+
+        return _buildBarChart(snapshot.data!);
+      },
+    );
+  }
+
+  Widget _buildBarChart(List<dynamic> data) {
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: _calculateMaxY(data),
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            tooltipBgColor: Colors.blueGrey,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '${data[groupIndex]['category']}: ${rod.toY.round()}',
+                const TextStyle(color: Colors.white),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                if (value >= 0 && value < data.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      data[value.toInt()]['category'],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  );
+                }
+                return const Text('');
+              },
+              reservedSize: 40,
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                );
+              },
+              reservedSize: 40,
+            ),
+          ),
+          topTitles: AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+        borderData: FlBorderData(
+          show: false,
+        ),
+        barGroups: _createBarGroups(data),
+        gridData: FlGridData(
+          show: true,
+          horizontalInterval: 5,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.grey.withOpacity(0.2),
+              strokeWidth: 1,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  List<BarChartGroupData> _createBarGroups(List<dynamic> data) {
+    List<BarChartGroupData> groups = [];
+
+    for (int i = 0; i < data.length; i++) {
+      groups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: data[i]['value'].toDouble(),
+              color: AppColors.primary,
+              width: 20,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(6),
+                topRight: Radius.circular(6),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return groups;
+  }
+
+  double _calculateMaxY(List<dynamic> data) {
+    double maxValue = 0;
+    for (var item in data) {
+      if (item['value'] > maxValue) {
+        maxValue = item['value'].toDouble();
+      }
+    }
+    return maxValue * 1.2; // Add 20% padding at the top
+  }
+
+  Future<List<dynamic>> _fetchData() async {
+    // This would be replaced with actual data fetching logic
+    // based on the dataSource and groupBy
+    await Future.delayed(const Duration(seconds: 1));
+
+    // Sample data
+    return [
+      {'category': 'Category 1', 'value': 25},
+      {'category': 'Category 2', 'value': 38},
+      {'category': 'Category 3', 'value': 15},
+      {'category': 'Category 4', 'value': 42},
+      {'category': 'Category 5', 'value': 30},
+    ];
+  }
+}

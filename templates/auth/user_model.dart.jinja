@@ -1,0 +1,111 @@
+import '../../domain/entities/user_entity.dart';
+
+/// User model for data layer operations
+class UserModel {
+  final String id;
+  final String? email;
+  final String? displayName;
+  final String? photoUrl;
+  final bool emailVerified;
+  final List<String> roles;
+  final Map<String, dynamic>? metadata;
+  final DateTime createdAt;
+  final DateTime? lastLoginAt;
+
+  const UserModel({
+    required this.id,
+    this.email,
+    this.displayName,
+    this.photoUrl,
+    this.emailVerified = false,
+    this.roles = const ['user'],
+    this.metadata,
+    required this.createdAt,
+    this.lastLoginAt,
+  });
+
+  /// Convert model to entity
+  UserEntity toEntity() {
+    return UserEntity(
+      id: id,
+      email: email,
+      displayName: displayName,
+      photoUrl: photoUrl,
+      emailVerified: emailVerified,
+      roles: roles,
+      metadata: metadata,
+      createdAt: createdAt,
+      lastLoginAt: lastLoginAt,
+    );
+  }
+
+  /// Create model from entity
+  factory UserModel.fromEntity(UserEntity entity) {
+    return UserModel(
+      id: entity.id,
+      email: entity.email,
+      displayName: entity.displayName,
+      photoUrl: entity.photoUrl,
+      emailVerified: entity.emailVerified,
+      roles: entity.roles,
+      metadata: entity.metadata,
+      createdAt: entity.createdAt,
+      lastLoginAt: entity.lastLoginAt,
+    );
+  }
+
+  /// Create model from Firebase user
+  factory UserModel.fromFirebase(dynamic firebaseUser, {List<String>? roles}) {
+    return UserModel(
+      id: firebaseUser.uid,
+      email: firebaseUser.email,
+      displayName: firebaseUser.displayName,
+      photoUrl: firebaseUser.photoURL,
+      emailVerified: firebaseUser.emailVerified,
+      roles: roles ?? ['user'],
+      metadata: {
+        'phoneNumber': firebaseUser.phoneNumber,
+        'providerId': firebaseUser.providerData.isNotEmpty
+            ? firebaseUser.providerData[0].providerId
+            : null,
+      },
+      createdAt: firebaseUser.metadata.creationTime ?? DateTime.now(),
+      lastLoginAt: firebaseUser.metadata.lastSignInTime,
+    );
+  }
+
+  /// Create model from JSON
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: json['id'] as String,
+      email: json['email'] as String?,
+      displayName: json['displayName'] as String?,
+      photoUrl: json['photoUrl'] as String?,
+      emailVerified: json['emailVerified'] as bool? ?? false,
+      roles: (json['roles'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          ['user'],
+      metadata: json['metadata'] as Map<String, dynamic>?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      lastLoginAt: json['lastLoginAt'] != null
+          ? DateTime.parse(json['lastLoginAt'] as String)
+          : null,
+    );
+  }
+
+  /// Convert to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'displayName': displayName,
+      'photoUrl': photoUrl,
+      'emailVerified': emailVerified,
+      'roles': roles,
+      'metadata': metadata,
+      'createdAt': createdAt.toIso8601String(),
+      'lastLoginAt': lastLoginAt?.toIso8601String(),
+    };
+  }
+}

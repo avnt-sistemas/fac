@@ -1,0 +1,222 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/widgets/error_message.dart';
+import '../../../../core/widgets/loading_indicator.dart';
+import '../../../../core/widgets/empty_list.dart';
+import '../../domain/entities/{{ snake_case_name }}_entity.dart';
+import '../controllers/{{ snake_case_name }}_controller.dart';
+
+class {{ entity_name }}ListScreen extends StatefulWidget {
+  const {{ entity_name }}ListScreen({Key? key}) : super(key: key);
+
+  @override
+  State<{{ entity_name }}ListScreen> createState() => _{{ entity_name }}ListScreenState();
+}
+
+class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScreen> {
+  late {{ entity_name }}Controller _controller;
+  Future<void>? _dataFuture;  // Inicialmente nulo
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Provider.of<{{ entity_name }}Controller>(context, listen: false);
+    // Não iniciamos o carregamento aqui
+  }
+
+  // Este método será chamado no método build, depois que o framework terminar de construir o widget
+  Future<void> _ensureDataLoaded() {
+    if (_dataFuture == null) {
+      setState(() {
+        _dataFuture = _controller.getAll();
+      });
+    }
+    return _dataFuture!;
+  }
+
+  Future<void> _refreshData() async {
+    setState(() {
+      _dataFuture = _controller.getAll();
+    });
+    return _dataFuture!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Iniciamos o carregamento aqui, depois que o widget foi construído
+    _ensureDataLoaded();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('{{ entity_name }}s'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshData,
+          ),
+        ],
+      ),
+      body: FutureBuilder(
+        future: _dataFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const LoadingIndicator();
+          }
+
+          if (snapshot.hasError) {
+            return ErrorMessage(
+              message: snapshot.error.toString(),
+              onRetry: _refreshData,
+            );
+          }
+
+          return Consumer<{{ entity_name }}Controller>(
+            builder: (context, controller, child) {
+              if (controller.items.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const EmptyList(message: 'No {{ entity_name }}s found'),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/{{ snake_case_name }}/create',
+                          ).then((_) => _refreshData());
+                        },
+                        child: const Text('Create {{ entity_name }}'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return RefreshIndicator(
+                onRefresh: _refreshData,
+                child: ListView.builder(
+                  itemCount: controller.items.length,
+                  itemBuilder: (context, index) {
+                    final item = controller.items[index];
+                    return _buildItemCard(context, item);
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            '/{{ snake_case_name }}/create',
+          ).then((_) => _refreshData());
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildItemCard(BuildContext context, {{ entity_name }}Entity item) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ListTile(
+        title: Text(
+{%- for field in fields %}
+{%- if loop.first %}
+          item.{{ field.name }}{% if field.type != 'String' %}.toString(){% endif %},
+{%- endif %}
+{%- endfor %}
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+{%- for field in fields %}
+{%- if not loop.first and loop.index <= 3 %}
+            Text('{{ field.name | capitalize }}: ${item.{{ field.name }}{% if field.type == 'DateTime' or field.type == 'DateTime?' %}?.toString().substring(0, 10) ?? 'N/A'{% elif field.type != 'String' %}?.toString() ?? 'N/A'{% else %} ?? 'N/A'{% endif %}}'),
+{%- endif %}
+{%- endfor %}
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.blue),
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  '/{{ snake_case_name }}/edit',
+                  arguments: item,
+                ).then((_) => _refreshData());
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () {
+                _showDeleteConfirmation(context, item);
+              },
+            ),
+          ],
+        ),
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            '/{{ snake_case_name }}/detail',
+            arguments: item,
+          );
+        },
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, {{ entity_name }}Entity item) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: const Text(
+          'Are you sure you want to delete this {{ entity_name }}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+{%- if soft_delete is defined and soft_delete %}
+                await _controller.delete(item.id);
+{%- else %}
+                await _controller.delete(item.id);
+{%- endif %}
+                _refreshData(); // Atualizar a lista após excluir
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('{{ entity_name }} deleted successfully'),
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error deleting {{ entity_name }}: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -1,0 +1,90 @@
+import 'package:get_it/get_it.dart';
+import 'package:sqflite/sqflite.dart';
+import '../core/data/datasources/sqlite_service.dart';
+{% for module in modules %}
+import '../features/{{ module.name|lower }}/data/repositories/{{ module.name|lower }}_repository_impl.dart';
+import '../features/{{ module.name|lower }}/domain/repositories/i_{{ module.name|lower }}_repository.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/get_all_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/get_by_id_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/create_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/update_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/delete_{{ module.name|lower }}_usecase.dart';
+{% if module.soft_delete %}
+import '../features/{{ module.name|lower }}/domain/usecases/restore_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/hard_delete_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.name|lower }}/domain/usecases/get_all_with_deleted_{{ module.name|lower }}_usecase.dart';
+{% endif %}
+import '../features/{{ module.name|lower }}/presentation/controllers/{{ module.name|lower }}_controller.dart';
+{% endfor %}
+
+final GetIt locator = GetIt.instance;
+
+/// Initialize all dependencies
+Future<void> setupDependencies() async {
+  // SQLite Service
+  final sqliteService = SQLiteService();
+  final db = await sqliteService.database;
+  locator.registerSingleton<Database>(db);
+  locator.registerSingleton<SQLiteService>(sqliteService);
+
+  // Register repositories and controllers for each module
+{% for module in modules %}
+  // {{ module.name }} Module
+  // Registrar o repositório
+  locator.registerFactory<I{{ module.name }}Repository>(
+    () => {{ module.name }}RepositoryImpl(database: locator<Database>()),
+  );
+
+  // Use cases
+  locator.registerFactory<GetAll{{ module.name }}UseCase>(
+    () => GetAll{{ module.name }}UseCase(repository: locator<I{{ module.name }}Repository>()),
+  );
+
+  locator.registerFactory<GetById{{ module.name }}UseCase>(
+    () => GetById{{ module.name }}UseCase(repository: locator<I{{ module.name }}Repository>()),
+  );
+
+  locator.registerFactory<Create{{ module.name }}UseCase>(
+    () => Create{{ module.name }}UseCase(repository: locator<I{{ module.name }}Repository>()),
+  );
+
+  locator.registerFactory<Update{{ module.name }}UseCase>(
+    () => Update{{ module.name }}UseCase(repository: locator<I{{ module.name }}Repository>()),
+  );
+
+  locator.registerFactory<Delete{{ module.name }}UseCase>(
+    () => Delete{{ module.name }}UseCase(repository: locator<I{{ module.name }}Repository>()),
+  );
+
+{% if module.soft_delete %}
+  // Soft Delete Use Cases
+  locator.registerFactory<Restore{{ module.name }}UseCase>(
+    () => Restore{{ module.name }}UseCase(repository: locator<I{{ module.name }}Repository>()),
+  );
+
+  locator.registerFactory<HardDelete{{ module.name }}UseCase>(
+    () => HardDelete{{ module.name }}UseCase(repository: locator<I{{ module.name }}Repository>()),
+  );
+
+  locator.registerFactory<GetAllWithDeleted{{ module.name }}UseCase>(
+    () => GetAllWithDeleted{{ module.name }}UseCase(repository: locator<I{{ module.name }}Repository>()),
+  );
+{% endif %}
+
+  // Controller
+  locator.registerFactory<{{ module.name }}Controller>(
+    () => {{ module.name }}Controller(
+      getAllUseCase: locator<GetAll{{ module.name }}UseCase>(),
+      getByIdUseCase: locator<GetById{{ module.name }}UseCase>(),
+      createUseCase: locator<Create{{ module.name }}UseCase>(),
+      updateUseCase: locator<Update{{ module.name }}UseCase>(),
+      deleteUseCase: locator<Delete{{ module.name }}UseCase>(),
+{% if module.soft_delete %}
+      restoreUseCase: locator<Restore{{ module.name }}UseCase>(),
+      hardDeleteUseCase: locator<HardDelete{{ module.name }}UseCase>(),
+      getAllWithDeletedUseCase: locator<GetAllWithDeleted{{ module.name }}UseCase>(),
+{% endif %}
+    ),
+  );
+{% endfor %}
+}

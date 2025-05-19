@@ -1,0 +1,64 @@
+/// Base exception class for application-specific exceptions
+class AppException implements Exception {
+  final String message;
+  final String? code;
+  final dynamic details;
+
+  const AppException({
+    required this.message,
+    this.code,
+    this.details,
+  });
+
+  @override
+  String toString() {
+    String result = 'AppException';
+    if (code != null) {
+      result += ' [$code]';
+    }
+    result += ': $message';
+    if (details != null) {
+      result += '\nDetails: $details';
+    }
+    return result;
+  }
+}
+
+/// Exception for unauthorized access
+class UnauthorizedException extends AppException {
+  const UnauthorizedException({
+    String message = 'Unauthorized access',
+    String? code = 'UNAUTHORIZED',
+    dynamic details,
+  }) : super(
+          message: message,
+          code: code,
+          details: details,
+        );
+}
+
+/// Exception for not found resources
+class NotFoundException extends AppException {
+  const NotFoundException({
+    String message = 'Resource not found',
+    String? code = 'NOT_FOUND',
+    dynamic details,
+  }) : super(
+          message: message,
+          code: code,
+          details: details,
+        );
+}
+
+/// Exception for validation errors
+class ValidationException extends AppException {
+  const ValidationException({
+    String message = 'Validation failed',
+    String? code = 'VALIDATION_ERROR',
+    dynamic details,
+  }) : super(
+          message: message,
+          code: code,
+          details: details,
+        );
+}

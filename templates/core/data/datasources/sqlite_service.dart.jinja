@@ -1,0 +1,153 @@
+import 'dart:async';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'package:flutter/foundation.dart';
+
+/// Service for SQLite database management
+class SQLiteService {
+  static final SQLiteService _instance = SQLiteService._internal();
+  static Database? _database;
+
+  /// Factory constructor to return the same instance
+  factory SQLiteService() {
+    return _instance;
+  }
+
+  /// Private constructor
+  SQLiteService._internal();
+
+  /// Get the database instance
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDatabase();
+    return _database!;
+  }
+
+  /// Initialize the database
+  Future<Database> _initDatabase() async {
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, '{{ app_name|lower|replace(" ", "_") }}.db');
+
+    // When running in debug mode, we can enable logging
+    if (kDebugMode) {
+      Sqflite.setDebugModeOn(true);
+    }
+
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
+  }
+
+  /// Create database tables
+  Future<void> _onCreate(Database db, int version) async {
+    await _createTables(db);
+  }
+
+  /// Handle database upgrades
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < newVersion) {
+      // Migration logic here
+      // For example, if moving from version 1 to 2, add new tables or modify existing ones
+    }
+  }
+
+  /// Create database tables
+  Future<void> _createTables(Database db) async {
+    final batch = db.batch();
+
+    // Create tables for each module
+{% for module in modules %}
+    batch.execute('''
+      CREATE TABLE {{ module.name|lower }} (
+        id TEXT PRIMARY KEY,
+{% for field in module.fields %}
+  {% if field.type == 'String' %}
+        {{ field.name }} TEXT{% if field.required %} NOT NULL{% endif %},
+  {% elif field.type == 'int' %}
+        {{ field.name }} INTEGER{% if field.required %} NOT NULL{% endif %},
+  {% elif field.type == 'double' %}
+        {{ field.name }} REAL{% if field.required %} NOT NULL{% endif %},
+  {% elif field.type == 'bool' %}
+        {{ field.name }} INTEGER{% if field.required %} NOT NULL{% endif %},
+  {% elif field.type == 'DateTime' %}
+        {{ field.name }} TEXT{% if field.required %} NOT NULL{% endif %},
+  {% elif field.type == 'List<String>' %}
+        {{ field.name }} TEXT,
+  {% elif field.type == 'reference' %}
+        {{ field.name }}_id TEXT,
+  {% else %}
+        {{ field.name }} TEXT,
+  {% endif %}
+{% endfor %}
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+  {% if module.soft_delete %}
+        ,deleted INTEGER DEFAULT 0
+  {% endif %}
+      );
+    ''');
+
+  {% if module.fields|selectattr('unique', 'defined')|list|length > 0 %}
+    // Create unique indexes
+    {% for field in module.fields %}
+      {% if field.unique is defined and field.unique %}
+    batch.execute(
+      'CREATE UNIQUE INDEX idx_{{ module.name|lower }}_{{ field.name }} ON {{ module.name|lower }}({{ field.name }});',
+    );
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+
+    await batch.commit();
+  }
+
+  /// Close the database
+  Future<void> close() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+  }
+
+  /// Delete the database file
+  Future<void> deleteDatabase() async {
+    await close();
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, '{{ app_name|lower|replace(" ", "_") }}.db');
+    await databaseFactory.deleteDatabase(path);
+  }
+
+  /// Reset database (delete all data but keep structure)
+  Future<void> resetDatabase() async {
+    final db = await database;
+    final batch = db.batch();
+
+{% for module in modules %}
+    batch.delete('{{ module.name|lower }}');
+{% endfor %}
+
+    await batch.commit();
+  }
+
+  /// Execute a query with transaction support
+  Future<T> transaction<T>(Future<T> Function(Transaction txn) action) async {
+    final db = await database;
+    return db.transaction(action);
+  }
+
+  /// Check if database is healthy
+  Future<bool> checkHealth() async {
+    try {
+      final db = await database;
+      await db.rawQuery('SELECT 1');
+      return true;
+    } catch (e) {
+      debugPrint('Database health check failed: $e');
+      return false;
+    }
+  }
+}

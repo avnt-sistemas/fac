@@ -1,0 +1,141 @@
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+
+/// Manager for SQLite migrations
+class SQLiteMigrationManager {
+  final String databaseName;
+  final int currentVersion;
+  final Map<int, List<String>> migrations;
+
+  SQLiteMigrationManager({
+    required this.databaseName,
+    required this.currentVersion,
+    required this.migrations,
+  });
+
+  /// Get the database instance
+  Future<Database> initializeDatabase() async {
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, '$databaseName.db');
+
+    if (kDebugMode) {
+      Sqflite.setDebugModeOn(true);
+    }
+
+    return await openDatabase(
+      path,
+      version: currentVersion,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+      onDowngrade: onDatabaseDowngradeDelete,
+    );
+  }
+
+  /// Create the database for the first time
+  Future<void> _onCreate(Database db, int version) async {
+    // Execute all migrations up to the current version
+    for (int i = 1; i <= version; i++) {
+      if (migrations.containsKey(i)) {
+        await _executeMigration(db, migrations[i]!);
+      }
+    }
+  }
+
+  /// Handle upgrades between versions
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Execute only the migrations that haven't been applied yet
+    for (int i = oldVersion + 1; i <= newVersion; i++) {
+      if (migrations.containsKey(i)) {
+        await _executeMigration(db, migrations[i]!);
+      }
+    }
+  }
+
+  /// Execute a list of SQL statements
+  Future<void> _executeMigration(Database db, List<String> queries) async {
+    final batch = db.batch();
+
+    for (final query in queries) {
+      batch.execute(query);
+    }
+
+    await batch.commit();
+  }
+
+  /// Helper method to generate migrations map from module definitions
+  static Map<int, List<String>> generateMigrationsFromModules(List<dynamic> modules) {
+    final Map<int, List<String>> migrations = {};
+
+    // Initial migration (version 1)
+    final List<String> initialMigration = [];
+
+    for (final module in modules) {
+      // Create table
+      String createTableQuery = '''
+        CREATE TABLE ${module.name.toLowerCase()} (
+          id TEXT PRIMARY KEY,
+      ''';
+
+      for (final field in module.fields) {
+        String fieldType;
+        bool required = field.required ?? false;
+
+        switch (field.type) {
+          case 'String':
+            fieldType = 'TEXT';
+            break;
+          case 'int':
+            fieldType = 'INTEGER';
+            break;
+          case 'double':
+            fieldType = 'REAL';
+            break;
+          case 'bool':
+            fieldType = 'INTEGER';
+            break;
+          case 'DateTime':
+            fieldType = 'TEXT';
+            break;
+          case 'List<String>':
+            fieldType = 'TEXT';
+            break;
+          case 'reference':
+            fieldType = 'TEXT';
+            break;
+          default:
+            fieldType = 'TEXT';
+        }
+
+        createTableQuery += '  ${field.name} $fieldType${required ? ' NOT NULL' : ''},\n';
+      }
+
+      // Add timestamps
+      createTableQuery += '''
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT NOT NULL
+      ''';
+
+      // Add soft delete if needed
+      if (module.softDelete ?? false) {
+        createTableQuery += ',\n  deleted INTEGER DEFAULT 0';
+      }
+
+      createTableQuery += '\n);';
+      initialMigration.add(createTableQuery);
+
+      // Add indexes for unique fields
+      for (final field in module.fields) {
+        if (field.unique ?? false) {
+          initialMigration.add(
+            'CREATE UNIQUE INDEX idx_${module.name.toLowerCase()}_${field.name} ON ${module.name.toLowerCase()}(${field.name});'
+          );
+        }
+      }
+    }
+
+    migrations[1] = initialMigration;
+    return migrations;
+  }
+}

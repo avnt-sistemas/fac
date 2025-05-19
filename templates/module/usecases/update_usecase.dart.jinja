@@ -1,0 +1,15 @@
+import '../../domain/entities/{{ module_name|lower }}_entity.dart';
+import '../../domain/repositories/i_{{ module_name|lower }}_repository.dart';
+
+/// Use case to update an existing {{ pascal_case }}
+class Update{{ pascal_case }}UseCase {
+  final I{{ pascal_case }}Repository _repository;
+
+  Update{{ pascal_case }}UseCase({required I{{ pascal_case }}Repository repository})
+      : _repository = repository;
+
+  /// Execute the use case
+  Future<{{ pascal_case }}Entity> execute({{ pascal_case }}Entity entity) {
+    return _repository.update(entity);
+  }
+}
