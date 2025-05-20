@@ -54,7 +54,7 @@ ${columnDefinitions.join(',\n')}
       case 'DateTime':
         return 'TEXT';
       default:
-        if (dartType.startswith('List')) {
+        if (dartType.startsWith('List')) {
           return 'TEXT'; // Lists are stored as JSON
         } else {
           return 'TEXT'; // Default to TEXT for complex types

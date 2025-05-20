@@ -16,18 +16,9 @@ class DatabaseInitializer {
       // Create SQLiteService instance
       final sqliteService = SQLiteService();
 
-      // Define migrations based on the application modules
-      final migrations = _defineMigrations();
-
-      // Create migration manager
-      final migrationManager = SQLiteMigrationManager(
-        databaseName: databaseName,
-        currentVersion: databaseVersion,
-        migrations: migrations,
-      );
 
       // Initialize database
-      final database = await migrationManager.initializeDatabase();
+      final database = await sqliteService.database;
 
       if (kDebugMode) {
         print('Database initialized successfully');
@@ -43,82 +34,6 @@ class DatabaseInitializer {
     }
   }
 
-  /// Define migrations for all database versions
-  static Map<int, List<String>> _defineMigrations() {
-    // Initial migration (version 1)
-    final List<String> initialMigration = [
-{% for module in modules %}
-      // Create {{ module.name }} table
-      '''
-      CREATE TABLE {{ module.name|lower }} (
-        id TEXT PRIMARY KEY,
-{% for field in fields %}
-  {% if field.type == 'String' %}
-        {{ field.name }} TEXT{% if field.required is defined and field.required %} NOT NULL{% endif %},
-  {% elif field.type == 'int' %}
-        {{ field.name }} INTEGER{% if field.required is defined and field.required %} NOT NULL{% endif %},
-  {% elif field.type == 'double' %}
-        {{ field.name }} REAL{% if field.required is defined and field.required %} NOT NULL{% endif %},
-  {% elif field.type == 'bool' %}
-        {{ field.name }} INTEGER{% if field.required is defined and field.required %} NOT NULL{% endif %}, -- 0 = false, 1 = true
-  {% elif field.type == 'DateTime' %}
-        {{ field.name }} TEXT{% if field.required is defined and field.required %} NOT NULL{% endif %},
-  {% elif field.type == 'List<String>' %}
-        {{ field.name }} TEXT,
-  {% elif field.type == 'reference' %}
-        {{ field.name }}_id TEXT,
-  {% else %}
-        {{ field.name }} TEXT,
-  {% endif %}
-{% endfor %}
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT NOT NULL
-  {% if module.soft_delete is defined and module.soft_delete %}
-        ,deletedAt TEXT
-  {% endif %}
-      );
-      ''',
-  {% if module.fields|selectattr('unique', 'defined')|list|length > 0 %}
-    {% for field in module.fields %}
-      {% if field.unique is defined and field.unique %}
-      'CREATE UNIQUE INDEX idx_{{ module.name|lower }}_{{ field.name }} ON {{ module.name|lower }}({{ field.name }});',
-      {% endif %}
-    {% endfor %}
-  {% endif %}
-{% endfor %}
-
-{% for module in modules %}
-  {% for field in module.fields %}
-    {% if field.type == 'reference' and field.reference is defined %}
-      // Create junction table for many-to-many relationship if needed
-      // This is just a template - uncomment and customize if you have many-to-many relationships
-      /*
-      'CREATE TABLE {{ module.name|lower }}_{{ field.reference|lower }} (
-        {{ module.name|lower }}_id TEXT NOT NULL,
-        {{ field.reference|lower }}_id TEXT NOT NULL,
-        createdAt TEXT NOT NULL,
-        PRIMARY KEY ({{ module.name|lower }}_id, {{ field.reference|lower }}_id),
-        FOREIGN KEY ({{ module.name|lower }}_id) REFERENCES {{ module.name|lower }}(id) ON DELETE CASCADE,
-        FOREIGN KEY ({{ field.reference|lower }}_id) REFERENCES {{ field.reference|lower }}(id) ON DELETE CASCADE
-      );',
-      */
-    {% endif %}
-  {% endfor %}
-{% endfor %}
-    ];
-
-    // You can add more migrations for future versions here
-    // For example:
-    // final List<String> version2Migration = [
-    //   'ALTER TABLE some_table ADD COLUMN new_column TEXT;',
-    // ];
-
-    return {
-      1: initialMigration,
-      // 2: version2Migration,
-    };
-  }
-
   /// Print database information (tables, etc.) for debugging
   static Future<void> _printDatabaseInfo(Database db) async {
     // Get list of all tables
@@ -129,7 +44,7 @@ class DatabaseInitializer {
     print('Database tables:');
     for (final table in tables) {
       final tableName = table['name'] as String;
-      if (!tableName.startswith('sqlite_')) {
+      if (!tableName.startsWith('sqlite_')) {
         print('- $tableName');
 
         // Get table structure

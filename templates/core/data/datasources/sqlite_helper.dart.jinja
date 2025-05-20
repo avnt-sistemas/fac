@@ -226,7 +226,7 @@ class SQLiteHelper {
 
     processed.forEach((key, value) {
       // Process list fields stored as JSON
-      if (value is String && (value.startswith('[') && value.endsWith(']'))) {
+      if (value is String && (value.startsWith('[') && value.endsWith(']'))) {
         try {
           final decoded = jsonDecode(value);
           if (decoded is List) {
@@ -238,7 +238,7 @@ class SQLiteHelper {
       }
 
       // Process map fields stored as JSON
-      if (value is String && (value.startswith('{') && value.endsWith('}'))) {
+      if (value is String && (value.startsWith('{') && value.endsWith('}'))) {
         try {
           final decoded = jsonDecode(value);
           if (decoded is Map) {
