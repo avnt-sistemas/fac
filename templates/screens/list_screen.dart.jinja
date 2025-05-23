@@ -5,6 +5,12 @@ import '../../../../core/widgets/loading_indicator.dart';
 import '../../../../core/widgets/empty_list.dart';
 import '../../domain/entities/{{ snake_case_name }}_entity.dart';
 import '../controllers/{{ snake_case_name }}_controller.dart';
+{% if has_relationships %}
+{% for rel in relationships.direct %}
+import '../../../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|lower }}_entity.dart';
+import '../../../{{ rel.to_module|lower }}/presentation/controllers/{{ rel.to_module|lower }}_controller.dart';
+{% endfor %}
+{% endif %}
 
 class {{ entity_name }}ListScreen extends StatefulWidget {
   const {{ entity_name }}ListScreen({Key? key}) : super(key: key);
@@ -16,11 +22,26 @@ class {{ entity_name }}ListScreen extends StatefulWidget {
 class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScreen> {
   late {{ entity_name }}Controller _controller;
   Future<void>? _dataFuture;  // Inicialmente nulo
+{% if has_relationships %}
+
+  // Reference controllers for loading related data
+{% for rel in relationships.direct %}
+  late {{ rel.to_module }}Controller _{{ rel.to_module.lower() }}Controller;
+  Map<String, {{ rel.to_module }}Entity> _{{ rel.to_module.lower() }}Cache = {};
+{% endfor %}
+{% endif %}
 
   @override
   void initState() {
     super.initState();
     _controller = Provider.of<{{ entity_name }}Controller>(context, listen: false);
+{% if has_relationships %}
+
+    // Initialize reference controllers
+{% for rel in relationships.direct %}
+    _{{ rel.to_module.lower() }}Controller = Provider.of<{{ rel.to_module }}Controller>(context, listen: false);
+{% endfor %}
+{% endif %}
     // Não iniciamos o carregamento aqui
   }
 
@@ -28,15 +49,31 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
   Future<void> _ensureDataLoaded() {
     if (_dataFuture == null) {
       setState(() {
-        _dataFuture = _controller.getAll();
+        _dataFuture = _loadAllData();
       });
     }
     return _dataFuture!;
   }
 
+  Future<void> _loadAllData() async {
+    // Load main data
+    await _controller.getAll();
+
+{% if has_relationships %}
+    // Load reference data for displaying related information
+{% for rel in relationships.direct %}
+    await _{{ rel.to_module.lower() }}Controller.getAll();
+    // Cache reference data for quick lookup
+    for (var item in _{{ rel.to_module.lower() }}Controller.items) {
+      _{{ rel.to_module.lower() }}Cache[item.id] = item;
+    }
+{% endfor %}
+{% endif %}
+  }
+
   Future<void> _refreshData() async {
     setState(() {
-      _dataFuture = _controller.getAll();
+      _dataFuture = _loadAllData();
     });
     return _dataFuture!;
   }
@@ -136,9 +173,19 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
           children: [
 {%- for field in fields %}
 {%- if not loop.first and loop.index <= 3 %}
+{%- if field.type == 'reference' %}
+            Text('{{ field.name | capitalize }}: ${_get{{ field.reference }}Name(item.{{ field.name }})}'),
+{%- else %}
             Text('{{ field.name | capitalize }}: ${item.{{ field.name }}{% if field.type == 'DateTime' or field.type == 'DateTime?' %}?.toString().substring(0, 10) ?? 'N/A'{% elif field.type != 'String' %}?.toString() ?? 'N/A'{% else %} ?? 'N/A'{% endif %}}'),
 {%- endif %}
+{%- endif %}
 {%- endfor %}
+{% if has_relationships and relationships.reverse %}
+            // Show count of related items
+{% for rel in relationships.reverse %}
+            Text('{{ rel.property_name|capitalize|replace("ListAs", " as ") }}: ${item.{{ rel.property_name }}.length}'),
+{% endfor %}
+{% endif %}
           ],
         ),
         trailing: Row(
@@ -173,13 +220,33 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
     );
   }
 
+{% if has_relationships %}
+  // Helper methods to get related entity names
+{% for rel in relationships.direct %}
+  String _get{{ rel.to_module }}Name(String? {{ rel.field_name }}) {
+    if ({{ rel.field_name }} == null || {{ rel.field_name }}.isEmpty) return 'N/A';
+    final related = _{{ rel.to_module.lower() }}Cache[{{ rel.field_name }}];
+    return related?.name ?? related?.id ?? 'Unknown'; // Assuming name field exists, fallback to id
+  }
+{% endfor %}
+{% endif %}
+
   void _showDeleteConfirmation(BuildContext context, {{ entity_name }}Entity item) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Deletion'),
-        content: const Text(
+        content: Text(
+{% if has_relationships and relationships.reverse %}
+          'Are you sure you want to delete this {{ entity_name }}?\n\n'
+          'This will also affect:\n'
+{% for rel in relationships.reverse %}
+          '• ${item.{{ rel.property_name }}.length} {{ rel.property_name|replace("ListAs", " as ")|capitalize }}\n'
+{% endfor %}
+          '\nThis action cannot be undone.',
+{% else %}
           'Are you sure you want to delete this {{ entity_name }}? This action cannot be undone.',
+{% endif %}
         ),
         actions: [
           TextButton(

@@ -1,0 +1,24 @@
+class {{ pascal_case }}RelationshipQueries {
+  static const String tableName = '{{ snake_case_name }}';
+
+{% for rel in relationships.direct %}
+  /// Join query to get {{ module_name }} with {{ rel.to_module }}
+  static const String getWith{{ rel.to_module }} = '''
+    SELECT
+      t1.*,
+      t2.*
+    FROM \$tableName t1
+    LEFT JOIN {{ rel.to_module|lower }} t2 ON t1.{{ rel.field_name }} = t2.id
+    WHERE t1.id = ?
+  ''';
+
+{% endfor %}
+{% for rel in relationships.reverse %}
+  /// Query to get all {{ rel.from_module }} for this {{ module_name }} ({{ rel.property_name }})
+  static const String {{ rel.query_name }} = '''
+    SELECT * FROM {{ rel.from_module|lower }}
+    WHERE {{ rel.field_name }} = ?
+  ''';
+
+{% endfor %}
+}

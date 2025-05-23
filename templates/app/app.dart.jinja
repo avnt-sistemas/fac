@@ -6,17 +6,17 @@ import 'routes.dart';
 import '../features/auth/presentation/controllers/auth_controller.dart';
 {%- endif %}
 {%- for module in modules %}
-import '../features/{{ module.name|lower }}/presentation/controllers/{{ module.name|lower }}_controller.dart';
-import '../features/{{ module.name|lower }}/data/repositories/{{ module.name|lower }}_repository_impl.dart';
-import '../features/{{ module.name|lower }}/domain/usecases/get_all_{{ module.name|lower }}_usecase.dart';
-import '../features/{{ module.name|lower }}/domain/usecases/get_by_id_{{ module.name|lower }}_usecase.dart';
-import '../features/{{ module.name|lower }}/domain/usecases/create_{{ module.name|lower }}_usecase.dart';
-import '../features/{{ module.name|lower }}/domain/usecases/update_{{ module.name|lower }}_usecase.dart';
-import '../features/{{ module.name|lower }}/domain/usecases/delete_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.snake_name }}/presentation/controllers/{{ module.snake_name }}_controller.dart';
+import '../features/{{ module.snake_name }}/data/repositories/{{ module.snake_name }}_repository_impl.dart';
+import '../features/{{ module.snake_name }}/domain/usecases/get_all_{{ module.snake_name }}_usecase.dart';
+import '../features/{{ module.snake_name }}/domain/usecases/get_by_id_{{ module.snake_name }}_usecase.dart';
+import '../features/{{ module.snake_name }}/domain/usecases/create_{{ module.snake_name }}_usecase.dart';
+import '../features/{{ module.snake_name }}/domain/usecases/update_{{ module.snake_name }}_usecase.dart';
+import '../features/{{ module.snake_name }}/domain/usecases/delete_{{ module.snake_name }}_usecase.dart';
 {%- if module.soft_delete %}
-import '../features/{{ module.name|lower }}/domain/usecases/restore_{{ module.name|lower }}_usecase.dart';
-import '../features/{{ module.name|lower }}/domain/usecases/hard_delete_{{ module.name|lower }}_usecase.dart';
-import '../features/{{ module.name|lower }}/domain/usecases/get_all_with_deleted_{{ module.name|lower }}_usecase.dart';
+import '../features/{{ module.snake_name }}/domain/usecases/restore_{{ module.snake_name }}_usecase.dart';
+import '../features/{{ module.snake_name }}/domain/usecases/hard_delete_{{ module.snake_name }}_usecase.dart';
+import '../features/{{ module.snake_name }}/domain/usecases/get_all_with_deleted_{{ module.snake_name }}_usecase.dart';
 {%- endif %}
 {%- endfor %}
 import 'package:sqflite/sqflite.dart';

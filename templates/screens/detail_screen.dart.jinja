@@ -5,6 +5,16 @@ import '../../../../app/theme/dimensions.dart';
 import '../../../../core/widgets/loading_indicator.dart';
 import '../../domain/entities/{{ snake_case_name }}_entity.dart';
 import '../controllers/{{ snake_case_name }}_controller.dart';
+{% if has_relationships %}
+{% for rel in relationships.direct %}
+import '../../../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|lower }}_entity.dart';
+import '../../../{{ rel.to_module|lower }}/presentation/controllers/{{ rel.to_module|lower }}_controller.dart';
+{% endfor %}
+{% for rel in relationships.reverse %}
+import '../../../{{ rel.from_module|lower }}/domain/entities/{{ rel.from_module|lower }}_entity.dart';
+import '../../../{{ rel.from_module|lower }}/presentation/controllers/{{ rel.from_module|lower }}_controller.dart';
+{% endfor %}
+{% endif %}
 
 class {{ entity_name }}DetailScreen extends StatefulWidget {
   const {{ entity_name }}DetailScreen({Key? key}) : super(key: key);
@@ -16,11 +26,34 @@ class {{ entity_name }}DetailScreen extends StatefulWidget {
 class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailScreen> {
   late {{ entity_name }}Controller _controller;
   {{ entity_name }}Entity? _item;
+  bool _isLoading = false;
+{% if has_relationships %}
+
+  // Reference controllers and cached data
+{% for rel in relationships.direct %}
+  late {{ rel.to_module }}Controller _{{ rel.to_module.lower() }}Controller;
+  {{ rel.to_module }}Entity? _related{{ rel.to_module }};
+{% endfor %}
+{% for rel in relationships.reverse %}
+  late {{ rel.from_module }}Controller _{{ rel.from_module.lower() }}Controller;
+  List<{{ rel.from_module }}Entity> _{{ rel.property_name }} = [];
+{% endfor %}
+{% endif %}
 
   @override
   void initState() {
     super.initState();
     _controller = Provider.of<{{ entity_name }}Controller>(context, listen: false);
+{% if has_relationships %}
+
+    // Initialize reference controllers
+{% for rel in relationships.direct %}
+    _{{ rel.to_module.lower() }}Controller = Provider.of<{{ rel.to_module }}Controller>(context, listen: false);
+{% endfor %}
+{% for rel in relationships.reverse %}
+    _{{ rel.from_module.lower() }}Controller = Provider.of<{{ rel.from_module }}Controller>(context, listen: false);
+{% endfor %}
+{% endif %}
   }
 
   @override
@@ -29,6 +62,9 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is {{ entity_name }}Entity) {
       _item = args;
+{% if has_relationships %}
+      _loadRelatedData();
+{% endif %}
     } else if (args is String) {
       _loadItem(args);
     } else {
@@ -37,6 +73,10 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
   }
 
   Future<void> _loadItem(String id) async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       final item = await _controller.getById(id);
       if (item == null) {
@@ -53,6 +93,9 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
         setState(() {
           _item = item;
         });
+{% if has_relationships %}
+        await _loadRelatedData();
+{% endif %}
       }
     } catch (e) {
       if (mounted) {
@@ -63,8 +106,60 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
           ),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
+
+{% if has_relationships %}
+  Future<void> _loadRelatedData() async {
+    if (_item == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+{% for rel in relationships.direct %}
+      // Load related {{ rel.to_module }}
+      if (_item!.{{ rel.field_name }} != null && _item!.{{ rel.field_name }}!.isNotEmpty) {
+        _related{{ rel.to_module }} = await _{{ rel.to_module.lower() }}Controller.getById(_item!.{{ rel.field_name }}!);
+      }
+{% endfor %}
+
+{% for rel in relationships.reverse %}
+      // Load related {{ rel.from_module }} list ({{ rel.property_name }})
+      await _{{ rel.from_module.lower() }}Controller.getAll();
+      _{{ rel.property_name }} = _{{ rel.from_module.lower() }}Controller.items
+          .where((item) => item.{{ rel.field_name }} == _item!.id)
+          .toList();
+{% endfor %}
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading related data: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+{% endif %}
 
   @override
   Widget build(BuildContext context) {
@@ -104,17 +199,23 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(Dimensions.paddingM),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            const SizedBox(height: Dimensions.marginL),
-            _buildDetails(),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? const LoadingIndicator()
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(Dimensions.paddingM),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: Dimensions.marginL),
+                  _buildDetails(),
+{% if has_relationships %}
+                  const SizedBox(height: Dimensions.marginL),
+                  _buildRelationships(),
+{% endif %}
+                ],
+              ),
+            ),
     );
   }
 
@@ -180,11 +281,26 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
             const Divider(),
             const SizedBox(height: Dimensions.marginS),
 {% for field in fields %}
+{% if field.type == 'reference' %}
+            _buildDetailRow(
+              '{{ field.name | capitalize }}',
+              _related{{ field.reference }}?.name ?? _related{{ field.reference }}?.id ?? 'N/A',
+              Icons.link,
+              onTap: _related{{ field.reference }} != null ? () {
+                Navigator.pushNamed(
+                  context,
+                  '/{{ field.reference|lower }}/detail',
+                  arguments: _related{{ field.reference }},
+                );
+              } : null,
+            ),
+{% else %}
             _buildDetailRow(
               '{{ field.name | capitalize }}',
               _item!.{{ field.name }}{% if field.type == 'DateTime' or field.type == 'DateTime?' %}?.toString().substring(0, 10) ?? 'N/A'{% elif field.type != 'String' %}?.toString() ?? 'N/A'{% else %} ?? 'N/A'{% endif %},
               Icons.{% if field.type == 'String' %}text_fields{% elif field.type == 'int' or field.type == 'double' %}numbers{% elif field.type == 'bool' %}check_circle{% elif field.type == 'DateTime' or field.type == 'DateTime?' %}calendar_today{% elif field.type.startswith('List') %}list{% else %}info{% endif %},
             ),
+{% endif %}
 {% endfor %}
           ],
         ),
@@ -192,30 +308,124 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
     );
   }
 
-  Widget _buildDetailRow(String label, String value, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Dimensions.paddingS),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: Dimensions.marginM),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+{% if has_relationships %}
+  Widget _buildRelationships() {
+    return Column(
+      children: [
+{% for rel in relationships.reverse %}
+        _buildRelatedSection(
+          '{{ rel.property_name|capitalize|replace("ListAs", " as ") }}',
+          _{{ rel.property_name }},
+          (item) => item.name ?? item.id, // Assuming name field exists
+          (item) {
+            Navigator.pushNamed(
+              context,
+              '/{{ rel.from_module|lower }}/detail',
+              arguments: item,
+            );
+          },
+          () {
+            Navigator.pushNamed(
+              context,
+              '/{{ rel.from_module|lower }}/create',
+              arguments: {'{{ rel.field_name }}': _item!.id},
+            ).then((_) => _loadRelatedData());
+          },
+        ),
+        const SizedBox(height: Dimensions.marginM),
+{% endfor %}
+      ],
+    );
+  }
+
+  Widget _buildRelatedSection<T>(
+    String title,
+    List<T> items,
+    String Function(T) getDisplayText,
+    void Function(T) onItemTap,
+    VoidCallback onAddNew,
+  ) {
+    return Card(
+      elevation: Dimensions.elevationS,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Dimensions.radiusM),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Dimensions.paddingM),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  label,
-                  style: AppTextStyles.subtitle2,
+                  '$title (${items.length})',
+                  style: AppTextStyles.headline6,
                 ),
-                Text(
-                  value,
-                  style: AppTextStyles.bodyText2,
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: onAddNew,
+                  tooltip: 'Add new $title',
                 ),
               ],
             ),
-          ),
-        ],
+            const Divider(),
+            if (items.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(Dimensions.paddingM),
+                child: Text(
+                  'No $title found',
+                  style: AppTextStyles.caption,
+                ),
+              )
+            else
+              ...items.map((item) => ListTile(
+                title: Text(getDisplayText(item)),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () => onItemTap(item),
+                dense: true,
+              )).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+{% endif %}
+
+  Widget _buildDetailRow(
+    String label,
+    String value,
+    IconData icon,
+    {VoidCallback? onTap}
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Dimensions.paddingS),
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: Dimensions.marginM),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: AppTextStyles.subtitle2,
+                  ),
+                  Text(
+                    value,
+                    style: AppTextStyles.bodyText2,
+                  ),
+                ],
+              ),
+            ),
+            if (onTap != null)
+              const Icon(Icons.arrow_forward_ios, size: 16),
+          ],
+        ),
       ),
     );
   }
@@ -225,8 +435,17 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Deletion'),
-        content: const Text(
+        content: Text(
+{% if has_relationships and relationships.reverse %}
+          'Are you sure you want to delete this {{ entity_name }}?\n\n'
+          'This will also affect:\n'
+{% for rel in relationships.reverse %}
+          '• ${_{{ rel.property_name }}.length} {{ rel.property_name|replace("ListAs", " as ")|capitalize }}\n'
+{% endfor %}
+          '\nThis action cannot be undone.',
+{% else %}
           'Are you sure you want to delete this {{ entity_name }}? This action cannot be undone.',
+{% endif %}
         ),
         actions: [
           TextButton(

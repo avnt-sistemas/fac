@@ -1,89 +1,255 @@
 import 'package:equatable/equatable.dart';
+{%- if has_relationships %}
+{%- for import in related_imports %}
+{{ import }}
+{%- endfor %}
+{%- endif %}
 
 /// Entity class for {{ pascal_case }}
 class {{ pascal_case }}Entity extends Equatable {
   final String id;
-{% for field in fields %}
+{%- for field in fields %}
+{%- if field.type == 'reference' %}
+  final String? {{ field.name }};
+{%- else %}
   final {{ field.type }} {{ field.name }};
-{% endfor %}
+{%- endif %}
+{%- endfor %}
   final DateTime createdAt;
   final DateTime updatedAt;
-{% if soft_delete %}
+{%- if soft_delete %}
   final DateTime? deletedAt;  // Campo para soft delete
-{% endif %}
+{%- endif %}
 
-  const {{ pascal_case }}Entity({
+{%- if has_relationships %}
+  // Related entities (lazy loaded)
+{%- for rel in relationships.direct %}
+  final {{ rel.to_module }}Entity? _{{ rel.field_name.replace('Id', '').lower() }};
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+  final List<{{ rel.from_module }}Entity>? _{{ rel.property_name }};
+{%- endfor %}
+{%- endif %}
+
+
+  {%- if fields | selectattr('type', 'equalto', 'DateTime') | list %}{%- else %}const{%- endif %} {{ pascal_case }}Entity({
     required this.id,
-{% for field in fields %}
-    {% if field.required %}required this.{{ field.name }},
-    {% elif field.default is defined %}this.{{ field.name }} = {{ field.default }},
-    {% else %}
-        {% if field.type.endswith('?') %}
+{%- for field in fields %}
+    {%- if field.required %}required this.{{ field.name }},
+    {%- elif field.default is defined %}this.{{ field.name }} = {{ field.default }},
+    {%- else %}
+        {%- if field.type.endswith('?') %}
     this.{{ field.name }} = null,
-        {% elif field.type == 'String' %}
+        {%- elif field.type == 'String' %}
     this.{{ field.name }} = "",
-        {% elif field.type == 'int' %}
+        {%- elif field.type == 'int' %}
     this.{{ field.name }} = -1,
-        {% elif field.type == 'double' %}
+        {%- elif field.type == 'double' %}
     this.{{ field.name }} = 0.0,
-        {% elif field.type == 'bool' %}
+        {%- elif field.type == 'bool' %}
     this.{{ field.name }} = false,
-        {% elif field.type.startswith('List') %}
+        {%- elif field.type.startswith('List') %}
     this.{{ field.name }} = const [],
-        {% elif field.type == 'DateTime' %}
-    this.{{ field.name }} = DateTime(1970, 1, 1),
-        {% else %}
+        {%- elif field.type == 'DateTime' %}
+    DateTime? {{ field.name }},
+        {%- else %}
     this.{{ field.name }},
-        {% endif %}
-    {% endif %}
-{% endfor %}
+        {%- endif %}
+    {%- endif %}
+{%- endfor %}
     required this.createdAt,
     required this.updatedAt,
-{% if soft_delete %}
+{%- if soft_delete %}
     this.deletedAt,  // Soft delete timestamp
-{% endif %}
-  });
+{%- endif %}
+{%- if has_relationships %}
+    // Related entities parameters
+{%- for rel in relationships.direct %}
+    {{ rel.to_module }}Entity? related{{ rel.to_module }},
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+    List<{{ rel.from_module }}Entity>? related{{ rel.property_name|capitalize }},
+{%- endfor %}
+{%- endif %}
+  }) :
+{%- if has_relationships or (fields | selectattr('type', 'equalto', 'DateTime') | list and fields | selectattr('required', 'equalto', False)) %}
+    {%- for field in fields if field.type == 'DateTime' and not field.required %}
+    {{ field.name }} = {{ field.name }} ?? DateTime(1970, 1, 1),
+    {%- if not loop.last %}, {%- endif %}
+    {%- endfor %}
+
+{%- if has_relationships %}
+    // Initialize private fields from named parameters
+{%- for rel in relationships.direct %}
+    _{{ rel.field_name.replace('Id', '').lower() }} = related{{ rel.to_module }}{%- if not loop.last or relationships.reverse %},{%- endif %}
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+    _{{ rel.property_name }} = related{{ rel.property_name|capitalize }}{%- if not loop.last %},{%- endif %}
+{%- endfor %};
+{%- endif %}
+{%- else %}
+    ;
+{%- endif %}
 
   @override
   List<Object?> get props => [
     id,
-{% for field in fields %}
+{%- for field in fields %}
     {{ field.name }},
-{% endfor %}
+{%- endfor %}
     createdAt,
     updatedAt,
-{% if soft_delete %}
+{%- if soft_delete %}
     deletedAt,
-{% endif %}
+{%- endif %}
+{%- if has_relationships %}
+    // Related entities in equality
+{%- for rel in relationships.direct %}
+    _{{ rel.to_module.lower() }},
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+    {{ rel.property_name }},
+{%- endfor %}
+{%- endif %}
   ];
 
-{% if soft_delete %}
+{%- if soft_delete %}
   /// Verifica se o item foi excluído (soft delete)
   bool get isDeleted => deletedAt != null;
-{% endif %}
+{%- endif %}
+
+{%- if has_relationships %}
+  // Relationship getters
+{%- for rel in relationships.direct %}
+  {{ rel.to_module }}Entity? get {{ rel.field_name.replace('Id', '').lower() }} => _{{ rel.field_name.replace('Id', '').lower() }};
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+  List<{{ rel.from_module }}Entity> get {{ rel.property_name }} => _{{ rel.property_name }} ?? [];
+{%- endfor %}
+
+  // Relationship setters (for lazy loading)
+{%- for rel in relationships.direct %}
+  {{ pascal_case }}Entity copyWithRelated{{ rel.to_module }}({{ rel.to_module }}Entity? {{ rel.field_name.replace('Id', '').lower() }}) {
+    return copyWith(
+      related{{ rel.to_module }}: {{ rel.field_name.replace('Id', '').lower() }},
+    );
+  }
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+  {{ pascal_case }}Entity copyWithRelated{{ rel.property_name|capitalize }}(List<{{ rel.from_module }}Entity>? {{ rel.property_name }}) {
+    return copyWith(
+      related{{ rel.property_name|capitalize }}: {{ rel.property_name }},
+    );
+  }
+{%- endfor %}
+{%- endif %}
 
   /// Create a copy with modified fields
   {{ pascal_case }}Entity copyWith({
     String? id,
-{% for field in fields %}
-    {{ field.type }}{% if not field.type.endswith('?') %}?{% endif %} {{ field.name }},
-{% endfor %}
+{%- for field in fields %}
+    {{ field.type }}{%- if not field.type.endswith('?') %}?{%- endif %} {{ field.name }},
+{%- endfor %}
     DateTime? createdAt,
     DateTime? updatedAt,
-{% if soft_delete %}
+{%- if soft_delete %}
     DateTime? deletedAt,
-{% endif %}
+{%- endif %}
+{%- if has_relationships %}
+    // Related entities
+{%- for rel in relationships.direct %}
+    {{ rel.to_module }}Entity? related{{ rel.to_module }},
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+    List<{{ rel.from_module }}Entity>? related{{ rel.property_name|capitalize }},
+{%- endfor %}
+{%- endif %}
   }) {
     return {{ pascal_case }}Entity(
       id: id ?? this.id,
-{% for field in fields %}
+{%- for field in fields %}
       {{ field.name }}: {{ field.name }} ?? this.{{ field.name }},
-{% endfor %}
+{%- endfor %}
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-{% if soft_delete %}
+{%- if soft_delete %}
       deletedAt: deletedAt ?? this.deletedAt,  // Permitir modificar o deletedAt
-{% endif %}
+{%- endif %}
+{%- if has_relationships %}
+      // Related entities
+{%- for rel in relationships.direct %}
+      related{{ rel.to_module }}: related{{ rel.to_module }} ?? this._{{ rel.field_name.replace('Id', '').lower() }},
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+      related{{ rel.property_name|capitalize }}: related{{ rel.property_name|capitalize }} ?? this._{{ rel.property_name }},
+{%- endfor %}
+{%- endif %}
     );
+  }
+
+  /// Validation methods
+  bool get isValid {
+{%- for field in fields %}
+{%- if field.required %}
+  {%- if field.type == 'String' %}
+    if ({{ field.name }}.isEmpty) return false;
+  {%- else %}
+    // {{ field.name }} is required and non-nullable
+  {%- endif %}
+{%- endif %}
+{%- if field.validation == 'email' %}
+  {%- if field.type.endswith('?') %}
+    if ({{ field.name }} != null && !_isValidEmail({{ field.name }}!)) return false;
+  {%- else %}
+    if (!_isValidEmail({{ field.name }})) return false;
+  {%- endif %}
+{%- endif %}
+{%- endfor %}
+    return true;
+  }
+
+  List<String> get validationErrors {
+    List<String> errors = [];
+{%- for field in fields %}
+{%- if field.required %}
+  {%- if field.type == 'String' %}
+    if ({{ field.name }}.isEmpty) {
+      errors.add('{{ field.name }} is required');
+    }
+  {%- endif %}
+{%- endif %}
+{%- if field.validation == 'email' %}
+  {%- if field.type.endswith('?') %}
+    if ({{ field.name }} != null && !_isValidEmail({{ field.name }}!)) {
+      errors.add('{{ field.name }} must be a valid email');
+    }
+  {%- else %}
+    if (!_isValidEmail({{ field.name }})) {
+      errors.add('{{ field.name }} must be a valid email');
+    }
+  {%- endif %}
+{%- endif %}
+{%- endfor %}
+    return errors;
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  /// Relationship validation
+  bool get hasValidReferences {
+{%- for rel in relationships.direct %}
+{%- if rel.field_name.endswith('Id') %}
+  {%- if rel.required %}
+    // {{ rel.field_name }} is required - should have related entity
+  {%- else %}
+    if ({{ rel.field_name }} != null && {{ rel.field_name }}!.isNotEmpty && _{{ rel.field_name.replace('Id', '').lower() }} == null) {
+      // Reference exists but related entity not loaded - this is OK for lazy loading
+    }
+  {%- endif %}
+{%- endif %}
+{%- endfor %}
+    return true;
   }
 }

@@ -1,16 +1,36 @@
 import 'dart:convert';
 import '../../domain/entities/{{ module_name|lower }}_entity.dart';
 
+{%- if has_relationships %}
+{%- for import in related_imports %}
+{{ import.replace('domain/entities', 'data/models').replace('_entity.dart', '_model.dart') }}
+{%- endfor %}
+{%- endif %}
+
 /// Data model for {{ pascal_case }}
 class {{ pascal_case }}Model {
   final String id;
 {%- for field in fields %}
+{%- if field.type == 'reference' %}
+  final String? {{ field.name }};
+{%- else %}
   final {{ field.type }} {{ field.name }};
+{%- endif %}
 {%- endfor %}
   final DateTime createdAt;
   final DateTime updatedAt;
 {%- if soft_delete %}
   final DateTime? deletedAt;  // Campo para soft delete
+{%- endif %}
+
+{%- if has_relationships %}
+  // Related models (for joins)
+{%- for rel in relationships.direct %}
+  final {{ rel.to_module }}Model? {{ rel.field_name.replace('Id', '').lower() }};
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+  final List<{{ rel.from_module }}Model>? {{ rel.property_name }};
+{%- endfor %}
 {%- endif %}
 
   {{ pascal_case }}Model({
@@ -20,6 +40,8 @@ class {{ pascal_case }}Model {
     required this.{{ field.name }},
   {%- elif field.default is defined %}
     this.{{ field.name }} = {{ field.default }},
+  {%- elif field.type == 'DateTime' %}
+    DateTime? {{ field.name }},
   {%- else %}
     {%- if field.type.endswith('?') %}
     this.{{ field.name }} = null,
@@ -33,8 +55,6 @@ class {{ pascal_case }}Model {
     this.{{ field.name }} = false,
     {%- elif field.type.startswith('List') %}
     this.{{ field.name }} = const [],
-    {%- elif field.type == 'DateTime' %}
-    this.{{ field.name }} = DateTime(1970, 1, 1),
     {%- else %}
     this.{{ field.name }},
     {%- endif %}
@@ -45,7 +65,24 @@ class {{ pascal_case }}Model {
 {%- if soft_delete %}
     this.deletedAt,  // Tornando deletedAt opcional
 {%- endif %}
+{%- if has_relationships %}
+    // Related models
+{%- for rel in relationships.direct %}
+    this.{{ rel.field_name.replace('Id', '').lower() }},
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+    this.{{ rel.property_name }},
+{%- endfor %}
+{%- endif %}
+{%- if fields | selectattr('type', 'equalto', 'DateTime') | list and fields | selectattr('required', 'equalto', False) | list %}
+  }) : {%- for field in fields if field.type == 'DateTime' and not field.required %}
+    {{ field.name }} = {{ field.name }} ?? DateTime(1970, 1, 1)
+    {%- if not loop.last %}, {% endif %}
+    {%- endfor %}
+  ;
+{%- else %}
   });
+{%- endif %}
 
   /// Convert model to entity
   {{ pascal_case }}Entity toEntity() {
@@ -58,6 +95,15 @@ class {{ pascal_case }}Model {
       updatedAt: updatedAt,
 {%- if soft_delete %}
       deletedAt: deletedAt,  // Passando deletedAt para entity
+{%- endif %}
+{%- if has_relationships %}
+      // Related entities
+{%- for rel in relationships.direct %}
+      related{{ rel.to_module }}: {{ rel.field_name.replace('Id', '').lower() }}?.toEntity(),
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+      related{{ rel.property_name|capitalize }}: {{ rel.property_name }}?.map((m) => m.toEntity()).toList(),
+{%- endfor %}
 {%- endif %}
     );
   }
@@ -74,6 +120,15 @@ class {{ pascal_case }}Model {
 {%- if soft_delete %}
       deletedAt: entity.deletedAt,  // Extraindo deletedAt da entity
 {%- endif %}
+{%- if has_relationships %}
+      // Related models will be null when creating from entity
+{%- for rel in relationships.direct %}
+      {{ rel.field_name.replace('Id', '').lower() }}: null,
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+      {{ rel.property_name }}: null,
+{%- endfor %}
+{%- endif %}
     );
   }
 
@@ -89,17 +144,21 @@ class {{ pascal_case }}Model {
   {%- elif field.type == 'double' or field.type == 'double?' %}
       {{ field.name }}: json['{{ field.name }}'] as {{ field.type }},
   {%- elif field.type == 'bool?' %}
-      {{ field.name }}: json['{{ field.name }}'] != null ? (json['{{ field.name }}'] as int) == 1 : nulll,
+      {{ field.name }}: json['{{ field.name }}'] != null ? (json['{{ field.name }}'] as int) == 1 : null,
   {%- elif field.type == 'bool' %}
       {{ field.name }}: (json['{{ field.name }}'] as int) == 1,
-  {%- elif field.type == 'DateTime' or field.type == 'DateTime?' %}
+  {%- elif field.type == 'DateTime?' %}
       {{ field.name }}: json['{{ field.name }}'] != null
           ? DateTime.parse(json['{{ field.name }}'] as String)
           : null,
+  {%- elif field.type == 'DateTime' %}
+      {{ field.name }}: DateTime.parse(json['{{ field.name }}'] as String),
   {%- elif field.type.startswith('List<') %}
       {{ field.name }}: (json['{{ field.name }}'] as List<dynamic>?)
           ?.map((e) => e as {{ field.type.replace('List<', '').replace('>', '') }})
           .toList() ?? [],
+  {%- elif field.type == 'reference' %}
+      {{ field.name }}: json['{{ field.name }}'] as String?,
   {%- else %}
       {{ field.name }}: json['{{ field.name }}'],
   {%- endif %}
@@ -111,17 +170,35 @@ class {{ pascal_case }}Model {
           ? DateTime.parse(json['deletedAt'] as String)
           : null,  // Parseando deletedAt do JSON
 {%- endif %}
+{%- if has_relationships %}
+      // Parse related models from JSON if present
+{%- for rel in relationships.direct %}
+      {{ rel.field_name.replace('Id', '').lower() }}: json['{{ rel.field_name.replace('Id', '').lower() }}'] != null
+          ? {{ rel.to_module }}Model.fromJson(json['{{ rel.field_name.replace('Id', '').lower() }}'])
+          : null,
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+      {{ rel.property_name }}: json['{{ rel.property_name }}'] != null
+          ? (json['{{ rel.property_name }}'] as List)
+              .map((item) => {{ rel.from_module }}Model.fromJson(item))
+              .toList()
+          : null,
+{%- endfor %}
+{%- endif %}
     );
   }
 
   /// Convert to JSON
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> json = {
       'id': id,
 {%- for field in fields %}
-  {%- if field.type == 'DateTime' or field.type == 'DateTime?' %}
+  {%- if field.type == 'DateTime?' %}
       '{{ field.name }}': {{ field.name }}?.toIso8601String(),
+  {%- elif field.type == 'DateTime' %}
+      '{{ field.name }}': {{ field.name }}.toIso8601String(),
   {%- elif field.type == 'bool' or field.type == 'bool?' %}
+      '{{ field.name }}': {{ field.name }} == true ? 1 : 0,
   {%- else %}
       '{{ field.name }}': {{ field.name }},
   {%- endif %}
@@ -132,18 +209,47 @@ class {{ pascal_case }}Model {
       'deletedAt': deletedAt?.toIso8601String(),  // Convertendo deletedAt para ISO string
 {%- endif %}
     };
+
+{%- if has_relationships %}
+    // Add related models to JSON if present
+{%- for rel in relationships.direct %}
+    if ({{ rel.field_name.replace('Id', '').lower() }} != null) {
+      json['{{ rel.field_name.replace('Id', '').lower() }}'] = {{ rel.field_name.replace('Id', '').lower() }}!.toJson();
+    }
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+    if ({{ rel.property_name }} != null) {
+      json['{{ rel.property_name }}'] = {{ rel.property_name }}!.map((item) => item.toJson()).toList();
+    }
+{%- endfor %}
+{%- endif %}
+
+    return json;
   }
 
   /// Create a copy with modified fields
   {{ pascal_case }}Model copyWith({
     String? id,
 {%- for field in fields %}
+{%- if field.type == 'reference' %}
+    String? {{ field.name }},
+{%- else %}
     {{ field.type }}{% if not field.type.endswith('?') %}?{% endif %} {{ field.name }},
+{%- endif %}
 {%- endfor %}
     DateTime? createdAt,
     DateTime? updatedAt,
 {%- if soft_delete %}
     DateTime? deletedAt,  // Adicionando deletedAt ao copyWith
+{%- endif %}
+{%- if has_relationships %}
+    // Related models
+{%- for rel in relationships.direct %}
+    {{ rel.to_module }}Model? {{ rel.field_name.replace('Id', '').lower() }},
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+    List<{{ rel.from_module }}Model>? {{ rel.property_name }},
+{%- endfor %}
 {%- endif %}
   }) {
     return {{ pascal_case }}Model(
@@ -155,6 +261,15 @@ class {{ pascal_case }}Model {
       updatedAt: updatedAt ?? this.updatedAt,
 {%- if soft_delete %}
       deletedAt: deletedAt ?? this.deletedAt,  // Mantendo o valor original se não for alterado
+{%- endif %}
+{%- if has_relationships %}
+      // Related models
+{%- for rel in relationships.direct %}
+      {{ rel.field_name.replace('Id', '').lower() }}: {{ rel.field_name.replace('Id', '').lower() }} ?? this.{{ rel.field_name.replace('Id', '').lower() }},
+{%- endfor %}
+{%- for rel in relationships.reverse %}
+      {{ rel.property_name }}: {{ rel.property_name }} ?? this.{{ rel.property_name }},
+{%- endfor %}
 {%- endif %}
     );
   }

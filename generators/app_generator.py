@@ -260,6 +260,15 @@ class AppGenerator:
             except Exception as e:
                 print(f"Erro ao gerar main.dart: {e}")
 
+            modules = self.config.get('modules', [])
+            c = CaseConverter()
+
+            for module in modules:
+                if 'name' in module:
+                    module['camel_name'] = c.to_camel_case(module['name'])
+                    module['snake_name'] = c.to_snake_case(module['name'])
+                    module['pascal_name'] = c.to_pascal_case(module['name'])
+
             # Generate app.dart
             try:
                 template = self.jinja_env.get_template('app/app.dart.jinja')
@@ -267,7 +276,7 @@ class AppGenerator:
                     app_name=self.config['app']['name'],
                     has_auth=self.config.get('auth', {}).get('enabled', False),
                     persistence_provider=self.config.get('persistence', {}).get('provider', 'sqlite'),
-                    modules=self.config.get('modules', [])
+                    modules=modules
                 )
 
                 app_dart_path = os.path.join(app_dir, 'lib', 'app', 'app.dart')

@@ -4,6 +4,12 @@ import '../../../../app/theme/dimensions.dart';
 import '../../../../core/widgets/loading_indicator.dart';
 import '../../domain/entities/{{ snake_case_name }}_entity.dart';
 import '../controllers/{{ snake_case_name }}_controller.dart';
+{% if has_relationships %}
+{% for rel in relationships.direct %}
+import '../../../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|lower }}_entity.dart';
+import '../../../{{ rel.to_module|lower }}/presentation/controllers/{{ rel.to_module|lower }}_controller.dart';
+{% endfor %}
+{% endif %}
 
 class {{ entity_name }}FormScreen extends StatefulWidget {
   final {{ entity_name }}Entity? item;
@@ -29,14 +35,32 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
   late TextEditingController _{{ field.name }}Controller;
 {% endfor %}
 
+{% if has_relationships %}
+  // Reference controllers and data
+{% for rel in relationships.direct %}
+  late {{ rel.to_module }}Controller _{{ rel.to_module.lower() }}Controller;
+  List<{{ rel.to_module }}Entity> _{{ rel.to_module.lower() }}Options = [];
+  {{ rel.to_module }}Entity? _selected{{ rel.to_module }};
+{% endfor %}
+{% endif %}
+
   @override
   void initState() {
     super.initState();
     _controller = Provider.of<{{ entity_name }}Controller>(context, listen: false);
 
+{% if has_relationships %}
+    // Initialize reference controllers
+{% for rel in relationships.direct %}
+    _{{ rel.to_module.lower() }}Controller = Provider.of<{{ rel.to_module }}Controller>(context, listen: false);
+{% endfor %}
+{% endif %}
+
     // Initialize controllers
 {% for field in fields %}
-{% if field.type == 'String' %}
+{% if field.type == 'reference' %}
+    _{{ field.name }}Controller = TextEditingController();
+{% elif field.type == 'String' %}
     _{{ field.name }}Controller = TextEditingController(text: widget.item?.{{ field.name }} ?? '');
 {% elif field.type == 'int' or field.type == 'double' %}
     _{{ field.name }}Controller = TextEditingController(
@@ -56,7 +80,52 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
     );
 {% endif %}
 {% endfor %}
+
+{% if has_relationships %}
+    // Load reference data
+    _loadReferenceData();
+{% endif %}
   }
+
+{% if has_relationships %}
+  Future<void> _loadReferenceData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+{% for rel in relationships.direct %}
+      // Load {{ rel.to_module }} options
+      await _{{ rel.to_module.lower() }}Controller.getAll();
+      _{{ rel.to_module.lower() }}Options = _{{ rel.to_module.lower() }}Controller.items;
+
+      // Set selected value if editing
+      if (widget.isEditing && widget.item?.{{ rel.field_name }} != null) {
+        _selected{{ rel.to_module }} = _{{ rel.to_module.lower() }}Options.firstWhere(
+          (item) => item.id == widget.item!.{{ rel.field_name }},
+          orElse: () => null,
+        );
+        _{{ rel.field_name }}Controller.text = _selected{{ rel.to_module }}?.id ?? '';
+      }
+{% endfor %}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading reference data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+{% endif %}
 
   @override
   void dispose() {
@@ -95,7 +164,34 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
     return Column(
       children: [
 {% for field in fields %}
-{% if field.type == 'String' %}
+{% if field.type == 'reference' %}
+        // Reference field for {{ field.name }}
+        DropdownButtonFormField<{{ field.reference }}Entity>(
+          value: _selected{{ field.reference }},
+          decoration: const InputDecoration(
+            labelText: '{{ field.name | capitalize }}',
+            hintText: 'Select {{ field.reference }}',
+          ),
+          items: _{{ field.reference.lower() }}Options.map((item) {
+            return DropdownMenuItem<{{ field.reference }}Entity>(
+              value: item,
+              child: Text(_getDisplayText{{ field.reference }}(item)),
+            );
+          }).toList(),
+          onChanged: ({{ field.reference }}Entity? value) {
+            setState(() {
+              _selected{{ field.reference }} = value;
+              _{{ field.name }}Controller.text = value?.id ?? '';
+            });
+          },
+          validator: {% if field.required is defined and field.required %}(value) {
+            if (value == null) {
+              return '{{ field.name | capitalize }} is required';
+            }
+            return null;
+          }{% else %}null{% endif %},
+        ),
+{% elif field.type == 'String' %}
         TextFormField(
           controller: _{{ field.name }}Controller,
           decoration: const InputDecoration(
@@ -217,6 +313,19 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
     );
   }
 
+{% if has_relationships %}
+  // Helper methods to get display text for dropdowns
+{% for rel in relationships.direct %}
+  String _getDisplayText{{ rel.to_module }}({{ rel.to_module }}Entity item) {
+    // Try to find a suitable display field
+    if (item.name != null && item.name!.isNotEmpty) return item.name!;
+    if (item.title != null && item.title!.isNotEmpty) return item.title!;
+    if (item.description != null && item.description!.isNotEmpty) return item.description!;
+    return item.id; // Fallback to ID
+  }
+{% endfor %}
+{% endif %}
+
   Widget _buildButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -266,7 +375,11 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
         if (widget.isEditing && widget.item != null) {
           entity = widget.item!.copyWith(
 {% for field in fields %}
-{% if field.type == 'String' %}
+{% if field.type == 'reference' %}
+            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                ? _{{ field.name }}Controller.text
+                : null,
+{% elif field.type == 'String' %}
             {{ field.name }}: _{{ field.name }}Controller.text,
 {% elif field.type == 'int' %}
             {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
@@ -278,10 +391,12 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
                 : null,
 {% elif field.type == 'bool' %}
             {{ field.name }}: _{{ field.name }}Controller.text == 'true',
-{% elif field.type == 'DateTime' or field.type == 'DateTime?' %}
+{% elif field.type == 'DateTime?' %}
             {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
                 ? DateTime.parse(_{{ field.name }}Controller.text)
                 : null,
+{% elif field.type == 'DateTime' %}
+            {{ field.name }}: DateTime.parse(_{{ field.name }}Controller.text),
 {% else %}
             {{ field.name }}: _{{ field.name }}Controller.text,
 {% endif %}
@@ -300,22 +415,28 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
           entity = {{ entity_name }}Entity(
             id: '',  // Will be generated by the repository
 {% for field in fields %}
-{% if field.type == 'String' %}
+{% if field.type == 'reference' %}
+            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                ? _{{ field.name }}Controller.text
+                : null,
+{% elif field.type == 'String' %}
             {{ field.name }}: _{{ field.name }}Controller.text,
 {% elif field.type == 'int' %}
             {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
                 ? int.parse(_{{ field.name }}Controller.text)
-                : null,
+                : {% if field.default %}{{ field.default }}{% else %}null{% endif %},
 {% elif field.type == 'double' %}
             {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
                 ? double.parse(_{{ field.name }}Controller.text)
-                : null,
+                : {% if field.default %}{{ field.default }}{% else %}null{% endif %},
 {% elif field.type == 'bool' %}
             {{ field.name }}: _{{ field.name }}Controller.text == 'true',
-{% elif field.type == 'DateTime' or field.type == 'DateTime?' %}
+{% elif field.type == 'DateTime?' %}
             {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
                 ? DateTime.parse(_{{ field.name }}Controller.text)
                 : null,
+{% elif field.type == 'DateTime' %}
+            {{ field.name }}: DateTime.parse(_{{ field.name }}Controller.text),
 {% else %}
             {{ field.name }}: _{{ field.name }}Controller.text,
 {% endif %}

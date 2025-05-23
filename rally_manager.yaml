@@ -122,12 +122,22 @@ modules:
       xlsx: true
       pdf: true
 
+
   - name: "Vehicle"
+    translations:
+      singular:
+        en: "Vehicle"
+        br: "Veículo"
+      plural:
+        en: "Vehicles"
+        br: "Veículos"
     fields:
       - name: "brand"
         type: "String"
         required: true
       - name: "model"
+        type: "String"
+      - name: "name"
         type: "String"
         required: true
       - name: "year"
