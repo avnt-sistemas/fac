@@ -23,11 +23,10 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
   late {{ entity_name }}Controller _controller;
   Future<void>? _dataFuture;  // Inicialmente nulo
 {% if has_relationships %}
-
   // Reference controllers for loading related data
 {% for rel in relationships.direct %}
-  late {{ rel.to_module }}Controller _{{ rel.to_module.lower() }}Controller;
-  Map<String, {{ rel.to_module }}Entity> _{{ rel.to_module.lower() }}Cache = {};
+  late {{ rel.to_module }}Controller _{{ rel.camel_name }}Controller;
+  Map<String, {{ rel.to_module }}Entity> _{{ rel.camel_name }}Cache = {};
 {% endfor %}
 {% endif %}
 
@@ -39,7 +38,7 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 
     // Initialize reference controllers
 {% for rel in relationships.direct %}
-    _{{ rel.to_module.lower() }}Controller = Provider.of<{{ rel.to_module }}Controller>(context, listen: false);
+    _{{ rel.camel_name }}Controller = Provider.of<{{ rel.to_module }}Controller>(context, listen: false);
 {% endfor %}
 {% endif %}
     // Não iniciamos o carregamento aqui
@@ -62,10 +61,10 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 {% if has_relationships %}
     // Load reference data for displaying related information
 {% for rel in relationships.direct %}
-    await _{{ rel.to_module.lower() }}Controller.getAll();
+    await _{{ rel.camel_name }}Controller.getAll();
     // Cache reference data for quick lookup
-    for (var item in _{{ rel.to_module.lower() }}Controller.items) {
-      _{{ rel.to_module.lower() }}Cache[item.id] = item;
+    for (var item in _{{ rel.camel_name }}Controller.items) {
+      _{{ rel.camel_name }}Cache[item.id] = item;
     }
 {% endfor %}
 {% endif %}
@@ -173,19 +172,24 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
           children: [
 {%- for field in fields %}
 {%- if not loop.first and loop.index <= 3 %}
-{%- if field.type == 'reference' %}
-            Text('{{ field.name | capitalize }}: ${_get{{ field.reference }}Name(item.{{ field.name }})}'),
-{%- else %}
+{%- if field.type != 'reference' %}
             Text('{{ field.name | capitalize }}: ${item.{{ field.name }}{% if field.type == 'DateTime' or field.type == 'DateTime?' %}?.toString().substring(0, 10) ?? 'N/A'{% elif field.type != 'String' %}?.toString() ?? 'N/A'{% else %} ?? 'N/A'{% endif %}}'),
 {%- endif %}
 {%- endif %}
 {%- endfor %}
-{% if has_relationships and relationships.reverse %}
+{%- if has_relationships %}
+{%- if relationships.direct %}
+{%- for rel in relationships.direct %}
+            Text('{{ rel.field_name }}: ${_get{{ rel.pascal_name }}Name(item.{{ rel.field_name }})}'),
+{%- endfor %}
+{%- endif %}
+{%- if relationships.reverse %}
             // Show count of related items
-{% for rel in relationships.reverse %}
+{%- for rel in relationships.reverse %}
             Text('{{ rel.property_name|replace("ListAs", " as ") }}: ${item.{{ rel.property_name }}.length}'),
-{% endfor %}
-{% endif %}
+{%- endfor %}
+{%- endif %}
+{%- endif %}
           ],
         ),
         trailing: Row(
@@ -223,9 +227,9 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 {% if has_relationships %}
   // Helper methods to get related entity names
 {% for rel in relationships.direct %}
-  String _get{{ rel.to_module }}Name(String? {{ rel.field_name }}) {
+  String _get{{ rel.pascal_name }}Name(String? {{ rel.field_name }}) {
     if ({{ rel.field_name }} == null || {{ rel.field_name }}.isEmpty) return 'N/A';
-    final related = _{{ rel.to_module.lower() }}Cache[{{ rel.field_name }}];
+    final related = _{{ rel.camel_name }}Cache[{{ rel.field_name }}];
     return related?.title ?? related?.id ?? 'Unknown'; // Assuming name field exists, fallback to id
   }
 {% endfor %}

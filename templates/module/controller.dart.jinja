@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
-import '../../domain/entities/{{ module_name|lower }}_entity.dart';
-import '../../domain/usecases/get_all_{{ module_name|lower }}_usecase.dart';
-import '../../domain/usecases/get_by_id_{{ module_name|lower }}_usecase.dart';
-import '../../domain/usecases/create_{{ module_name|lower }}_usecase.dart';
-import '../../domain/usecases/update_{{ module_name|lower }}_usecase.dart';
-import '../../domain/usecases/delete_{{ module_name|lower }}_usecase.dart';
+import '../../domain/entities/{{ snake_case }}_entity.dart';
+import '../../domain/usecases/get_all_{{ snake_case }}_usecase.dart';
+import '../../domain/usecases/get_by_id_{{ snake_case }}_usecase.dart';
+import '../../domain/usecases/create_{{ snake_case }}_usecase.dart';
+import '../../domain/usecases/update_{{ snake_case }}_usecase.dart';
+import '../../domain/usecases/delete_{{ snake_case }}_usecase.dart';
 {% if soft_delete %}
-import '../../domain/usecases/restore_{{ module_name|lower }}_usecase.dart';
-import '../../domain/usecases/hard_delete_{{ module_name|lower }}_usecase.dart';
-import '../../domain/usecases/get_all_with_deleted_{{ module_name|lower }}_usecase.dart';
+import '../../domain/usecases/restore_{{ snake_case }}_usecase.dart';
+import '../../domain/usecases/hard_delete_{{ snake_case }}_usecase.dart';
+import '../../domain/usecases/get_all_with_deleted_{{ snake_case }}_usecase.dart';
 {% endif %}
 
 class {{ pascal_case }}Controller extends ChangeNotifier {

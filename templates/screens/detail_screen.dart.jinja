@@ -10,9 +10,10 @@ import '../controllers/{{ snake_case_name }}_controller.dart';
 import '../../../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|lower }}_entity.dart';
 import '../../../{{ rel.to_module|lower }}/presentation/controllers/{{ rel.to_module|lower }}_controller.dart';
 {%- endfor %}
+{#    {{ relationships.reverse | tojson }}#}
 {%- for rel in relationships.reverse %}
-import '../../../{{ rel.from_module|lower }}/domain/entities/{{ rel.from_module|lower }}_entity.dart';
-import '../../../{{ rel.from_module|lower }}/presentation/controllers/{{ rel.from_module|lower }}_controller.dart';
+import '../../../{{ rel.snake_name }}/domain/entities/{{ rel.snake_name }}_entity.dart';
+import '../../../{{ rel.snake_name }}/presentation/controllers/{{ rel.snake_name }}_controller.dart';
 {%- endfor %}
 {%- endif %}
 

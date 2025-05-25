@@ -401,6 +401,7 @@ class ModelGenerator:
             output = template.render(
                 module_name=module_name,
                 pascal_case=pascal_case,
+                snake_case=self.case_converter.to_snake_case(module_name),
                 soft_delete=soft_delete
             )
 
@@ -451,7 +452,7 @@ class ModelGenerator:
                 rel_copy = rel.copy()
                 rel_copy['property_name'] = self.case_converter.to_pascal_case(rel['reverse_name'])
                 rel_copy['camel_name'] = self.case_converter.to_camel_case(rel['reverse_name'])
-                rel_copy['snake_name'] = self.case_converter.to_snake_case(rel['reverse_name'])
+                rel_copy['snake_name'] = self.case_converter.to_snake_case(rel['from_module'])
                 processed_reverse.append(rel_copy)
 
             adjusted_relationships = {
