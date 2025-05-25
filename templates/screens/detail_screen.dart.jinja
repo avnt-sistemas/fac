@@ -5,16 +5,16 @@ import '../../../../app/theme/dimensions.dart';
 import '../../../../core/widgets/loading_indicator.dart';
 import '../../domain/entities/{{ snake_case_name }}_entity.dart';
 import '../controllers/{{ snake_case_name }}_controller.dart';
-{% if has_relationships %}
-{% for rel in relationships.direct %}
+{%- if has_relationships %}
+{%- for rel in relationships.direct %}
 import '../../../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|lower }}_entity.dart';
 import '../../../{{ rel.to_module|lower }}/presentation/controllers/{{ rel.to_module|lower }}_controller.dart';
-{% endfor %}
-{% for rel in relationships.reverse %}
+{%- endfor %}
+{%- for rel in relationships.reverse %}
 import '../../../{{ rel.from_module|lower }}/domain/entities/{{ rel.from_module|lower }}_entity.dart';
 import '../../../{{ rel.from_module|lower }}/presentation/controllers/{{ rel.from_module|lower }}_controller.dart';
-{% endfor %}
-{% endif %}
+{%- endfor %}
+{%- endif %}
 
 class {{ entity_name }}DetailScreen extends StatefulWidget {
   const {{ entity_name }}DetailScreen({Key? key}) : super(key: key);
@@ -27,33 +27,40 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
   late {{ entity_name }}Controller _controller;
   {{ entity_name }}Entity? _item;
   bool _isLoading = false;
-{% if has_relationships %}
+{%- if has_relationships %}
 
   // Reference controllers and cached data
-{% for rel in relationships.direct %}
-  late {{ rel.to_module }}Controller _{{ rel.to_module.lower() }}Controller;
-  {{ rel.to_module }}Entity? _related{{ rel.to_module }};
-{% endfor %}
-{% for rel in relationships.reverse %}
-  late {{ rel.from_module }}Controller _{{ rel.from_module.lower() }}Controller;
-  List<{{ rel.from_module }}Entity> _{{ rel.property_name }} = [];
-{% endfor %}
-{% endif %}
+{%- for rel in relationships.direct %}
+  late {{ rel.to_module }}Controller _{{ rel.camel_name }}Controller;
+{%- endfor %}
+
+{%- for rel in relationships.direct %}
+  {{ rel.to_module }}Entity? _related{{ rel.pascal_name }};
+{%- endfor %}
+
+{%- for from_module in relationships.reverse | map(attribute='from_module') | unique | list %}
+  late {{ from_module }}Controller _{{ from_module.lower() }}Controller;
+{%- endfor %}
+
+{%- for rel in relationships.reverse %}
+  List<{{ rel.from_module }}Entity> _{{ rel.camel_name }} = [];
+{%- endfor %}
+{%- endif %}
 
   @override
   void initState() {
     super.initState();
     _controller = Provider.of<{{ entity_name }}Controller>(context, listen: false);
-{% if has_relationships %}
+{%- if has_relationships %}
 
     // Initialize reference controllers
-{% for rel in relationships.direct %}
-    _{{ rel.to_module.lower() }}Controller = Provider.of<{{ rel.to_module }}Controller>(context, listen: false);
-{% endfor %}
-{% for rel in relationships.reverse %}
-    _{{ rel.from_module.lower() }}Controller = Provider.of<{{ rel.from_module }}Controller>(context, listen: false);
-{% endfor %}
-{% endif %}
+{%- for rel in relationships.direct %}
+    _{{ rel.camel_name}}Controller = Provider.of<{{ rel.to_module }}Controller>(context, listen: false);
+{%- endfor %}
+{%- for from_module in relationships.reverse | map(attribute='from_module') | unique | list %}
+    _{{ from_module.lower() }}Controller = Provider.of<{{ from_module }}Controller>(context, listen: false);
+{%- endfor %}
+{%- endif %}
   }
 
   @override
@@ -62,9 +69,9 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is {{ entity_name }}Entity) {
       _item = args;
-{% if has_relationships %}
+{%- if has_relationships %}
       _loadRelatedData();
-{% endif %}
+{%- endif %}
     } else if (args is String) {
       _loadItem(args);
     } else {
@@ -93,9 +100,9 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
         setState(() {
           _item = item;
         });
-{% if has_relationships %}
+{%- if has_relationships %}
         await _loadRelatedData();
-{% endif %}
+{%- endif %}
       }
     } catch (e) {
       if (mounted) {
@@ -115,7 +122,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
     }
   }
 
-{% if has_relationships %}
+{%- if has_relationships %}
   Future<void> _loadRelatedData() async {
     if (_item == null) return;
 
@@ -124,20 +131,20 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
     });
 
     try {
-{% for rel in relationships.direct %}
-      // Load related {{ rel.to_module }}
+{%- for rel in relationships.direct %}
+      // Load related {{ rel.to_module.lower() }}
       if (_item!.{{ rel.field_name }} != null && _item!.{{ rel.field_name }}!.isNotEmpty) {
-        _related{{ rel.to_module }} = await _{{ rel.to_module.lower() }}Controller.getById(_item!.{{ rel.field_name }}!);
+        _related{{ rel.pascal_name }} = await _{{ rel.camel_name }}Controller.getById(_item!.{{ rel.field_name }}!);
       }
-{% endfor %}
+{%- endfor %}
 
-{% for rel in relationships.reverse %}
+{%- for rel in relationships.reverse %}
       // Load related {{ rel.from_module }} list ({{ rel.property_name }})
       await _{{ rel.from_module.lower() }}Controller.getAll();
-      _{{ rel.property_name }} = _{{ rel.from_module.lower() }}Controller.items
+      _{{ rel.camel_name }} = _{{ rel.from_module.lower() }}Controller.items
           .where((item) => item.{{ rel.field_name }} == _item!.id)
           .toList();
-{% endfor %}
+{%- endfor %}
 
       if (mounted) {
         setState(() {});
@@ -159,7 +166,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
       }
     }
   }
-{% endif %}
+{%- endif %}
 
   @override
   Widget build(BuildContext context) {
@@ -209,10 +216,10 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
                   _buildHeader(),
                   const SizedBox(height: Dimensions.marginL),
                   _buildDetails(),
-{% if has_relationships %}
+{%- if has_relationships %}
                   const SizedBox(height: Dimensions.marginL),
                   _buildRelationships(),
-{% endif %}
+{%- endif %}
                 ],
               ),
             ),
@@ -231,11 +238,11 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-{% for field in fields %}
-{% if loop.first %}
-              _item!.{{ field.name }}{% if field.type != 'String' %}.toString(){% endif %},
-{% endif %}
-{% endfor %}
+{%- for field in fields %}
+{%- if loop.first %}
+              _item!.{{ field.name }}{%- if field.type != 'String' %}.toString(){%- endif %},
+{%- endif %}
+{%- endfor %}
               style: AppTextStyles.headline5,
             ),
             const Divider(),
@@ -280,60 +287,75 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
             ),
             const Divider(),
             const SizedBox(height: Dimensions.marginS),
-{% for field in fields %}
-{% if field.type == 'reference' %}
+{#            {{ relationships | tojson }}#}
+{%- for rel in relationships.direct %}
             _buildDetailRow(
-              '{{ field.name | capitalize }}',
-              _related{{ field.reference }}?.name ?? _related{{ field.reference }}?.id ?? 'N/A',
+              '{{ rel.field_name }}',
+              _related{{ rel.pascal_name }}?.title ?? _related{{ rel.pascal_name }}?.id ?? 'N/A',
               Icons.link,
-              onTap: _related{{ field.reference }} != null ? () {
+              onTap: _related{{ rel.pascal_name }} != null ? () {
                 Navigator.pushNamed(
                   context,
-                  '/{{ field.reference|lower }}/detail',
-                  arguments: _related{{ field.reference }},
+                  '/{{ rel.snake_name }}/detail',
+                  arguments: _related{{ rel.pascal_name }},
                 );
               } : null,
             ),
-{% else %}
+{%- endfor %}
+{%- for field in fields %}
+{%- if field.type == 'reference' %}
+{#            _buildDetailRow(#}
+{#              '{{ field.name | capitalize }}',#}
+{#              _related{{ field.reference }}?.title ?? _related{{ field.reference }}?.id ?? 'N/A',#}
+{#              Icons.link,#}
+{#              onTap: _related{{ field.reference }} != null ? () {#}
+{#                Navigator.pushNamed(#}
+{#                  context,#}
+{#                  '/{{ field.reference|lower }}/detail',#}
+{#                  arguments: _related{{ field.reference }},#}
+{#                );#}
+{#              } : null,#}
+{#            ),#}
+{%- else %}
             _buildDetailRow(
               '{{ field.name | capitalize }}',
-              _item!.{{ field.name }}{% if field.type == 'DateTime' or field.type == 'DateTime?' %}?.toString().substring(0, 10) ?? 'N/A'{% elif field.type != 'String' %}?.toString() ?? 'N/A'{% else %} ?? 'N/A'{% endif %},
-              Icons.{% if field.type == 'String' %}text_fields{% elif field.type == 'int' or field.type == 'double' %}numbers{% elif field.type == 'bool' %}check_circle{% elif field.type == 'DateTime' or field.type == 'DateTime?' %}calendar_today{% elif field.type.startswith('List') %}list{% else %}info{% endif %},
+              _item!.{{ field.name }}{%- if field.type == 'DateTime' or field.type == 'DateTime?' %}?.toString().substring(0, 10) ?? 'N/A'{%- elif field.type != 'String' %}?.toString() ?? 'N/A'{%- else %} ?? 'N/A'{%- endif %},
+              Icons.{%- if field.type == 'String' %}text_fields{%- elif field.type == 'int' or field.type == 'double' %}numbers{%- elif field.type == 'bool' %}check_circle{%- elif field.type == 'DateTime' or field.type == 'DateTime?' %}calendar_today{%- elif field.type.startswith('List') %}list{%- else %}info{%- endif %},
             ),
-{% endif %}
-{% endfor %}
+{%- endif %}
+{%- endfor %}
           ],
         ),
       ),
     );
   }
 
-{% if has_relationships %}
+{%- if has_relationships %}
   Widget _buildRelationships() {
     return Column(
       children: [
-{% for rel in relationships.reverse %}
+{%- for rel in relationships.reverse %}
         _buildRelatedSection(
-          '{{ rel.property_name|capitalize|replace("ListAs", " as ") }}',
-          _{{ rel.property_name }},
-          (item) => item.name ?? item.id, // Assuming name field exists
+          '{{ rel.property_name|replace("ListAs", " as ") }}',
+          _{{ rel.camel_name }},
+          (item) => item.title ?? item.id, // Assuming name field exists
           (item) {
             Navigator.pushNamed(
               context,
-              '/{{ rel.from_module|lower }}/detail',
+              '/{{ rel.snake_name }}/detail',
               arguments: item,
             );
           },
           () {
             Navigator.pushNamed(
               context,
-              '/{{ rel.from_module|lower }}/create',
+              '/{{ rel.snake_name }}/create',
               arguments: {'{{ rel.field_name }}': _item!.id},
             ).then((_) => _loadRelatedData());
           },
         ),
         const SizedBox(height: Dimensions.marginM),
-{% endfor %}
+{%- endfor %}
       ],
     );
   }
@@ -390,7 +412,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
       ),
     );
   }
-{% endif %}
+{%- endif %}
 
   Widget _buildDetailRow(
     String label,
@@ -436,16 +458,16 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
       builder: (context) => AlertDialog(
         title: const Text('Confirm Deletion'),
         content: Text(
-{% if has_relationships and relationships.reverse %}
+{%- if has_relationships and relationships.reverse %}
           'Are you sure you want to delete this {{ entity_name }}?\n\n'
           'This will also affect:\n'
-{% for rel in relationships.reverse %}
-          '• ${_{{ rel.property_name }}.length} {{ rel.property_name|replace("ListAs", " as ")|capitalize }}\n'
-{% endfor %}
+{%- for rel in relationships.reverse %}
+          '• ${_{{ rel.camel_name }}.length} {{ rel.property_name|replace("ListAs", " as ")|capitalize }}\n'
+{%- endfor %}
           '\nThis action cannot be undone.',
-{% else %}
+{%- else %}
           'Are you sure you want to delete this {{ entity_name }}? This action cannot be undone.',
-{% endif %}
+{%- endif %}
         ),
         actions: [
           TextButton(
@@ -458,11 +480,11 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
             onPressed: () async {
               Navigator.of(context).pop();
               try {
-{% if soft_delete is defined and soft_delete %}
+{%- if soft_delete is defined and soft_delete %}
                 await _controller.delete(item.id);
-{% else %}
+{%- else %}
                 await _controller.delete(item.id);
-{% endif %}
+{%- endif %}
                 if (mounted) {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(

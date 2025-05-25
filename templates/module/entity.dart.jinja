@@ -31,10 +31,13 @@ class {{ pascal_case }}Entity extends Equatable {
 {%- endfor %}
 {%- endif %}
 
-
-  {%- if fields | selectattr('type', 'equalto', 'DateTime') | list %}{%- else %}const{%- endif %} {{ pascal_case }}Entity({
+{% if fields | selectattr('type', 'equalto', 'DateTime') | list %}
+  {{ pascal_case }}Entity({
+{% else %}
+  const {{ pascal_case }}Entity({
+{% endif %}
     required this.id,
-{%- for field in fields %}
+{% for field in fields %}
     {%- if field.required %}required this.{{ field.name }},
     {%- elif field.default is defined %}this.{{ field.name }} = {{ field.default }},
     {%- else %}
@@ -56,7 +59,7 @@ class {{ pascal_case }}Entity extends Equatable {
     this.{{ field.name }},
         {%- endif %}
     {%- endif %}
-{%- endfor %}
+{% endfor %}
     required this.createdAt,
     required this.updatedAt,
 {%- if soft_delete %}
@@ -65,14 +68,14 @@ class {{ pascal_case }}Entity extends Equatable {
 {%- if has_relationships %}
     // Related entities parameters
 {%- for rel in relationships.direct %}
-    {{ rel.to_module }}Entity? related{{ rel.to_module }},
+    {{ rel.to_module }}Entity? related{{ rel.pascal_name|capitalize }},
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-    List<{{ rel.from_module }}Entity>? related{{ rel.property_name|capitalize }},
+    List<{{ rel.from_module }}Entity>? related{{ rel.property_name }},
 {%- endfor %}
 {%- endif %}
+{% if has_relationships or (fields | selectattr('type', 'equalto', 'DateTime') | list and fields | selectattr('required', 'equalto', False)) %}
   }) :
-{%- if has_relationships or (fields | selectattr('type', 'equalto', 'DateTime') | list and fields | selectattr('required', 'equalto', False)) %}
     {%- for field in fields if field.type == 'DateTime' and not field.required %}
     {{ field.name }} = {{ field.name }} ?? DateTime(1970, 1, 1),
     {%- if not loop.last %}, {%- endif %}
@@ -81,15 +84,18 @@ class {{ pascal_case }}Entity extends Equatable {
 {%- if has_relationships %}
     // Initialize private fields from named parameters
 {%- for rel in relationships.direct %}
-    _{{ rel.field_name.replace('Id', '').lower() }} = related{{ rel.to_module }}{%- if not loop.last or relationships.reverse %},{%- endif %}
+    _{{ rel.field_name.replace('Id', '').lower() }} = related{{ rel.pascal_name|capitalize }}{%- if not loop.last or relationships.reverse %},{%- endif %}
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-    _{{ rel.property_name }} = related{{ rel.property_name|capitalize }}{%- if not loop.last %},{%- endif %}
+    _{{ rel.property_name }} = related{{ rel.property_name }}{%- if not loop.last %},{%- endif %}
 {%- endfor %};
 {%- endif %}
 {%- else %}
-    ;
-{%- endif %}
+  });
+{% endif %}
+
+  get title => "nao implementado";
+  get subtitle => "nao implementado";
 
   @override
   List<Object?> get props => [
@@ -105,7 +111,7 @@ class {{ pascal_case }}Entity extends Equatable {
 {%- if has_relationships %}
     // Related entities in equality
 {%- for rel in relationships.direct %}
-    _{{ rel.to_module.lower() }},
+    _{{ rel.camel_name }},
 {%- endfor %}
 {%- for rel in relationships.reverse %}
     {{ rel.property_name }},
@@ -129,16 +135,16 @@ class {{ pascal_case }}Entity extends Equatable {
 
   // Relationship setters (for lazy loading)
 {%- for rel in relationships.direct %}
-  {{ pascal_case }}Entity copyWithRelated{{ rel.to_module }}({{ rel.to_module }}Entity? {{ rel.field_name.replace('Id', '').lower() }}) {
+  {{ pascal_case }}Entity copyWithRelated{{ rel.pascal_name }}({{ rel.to_module }}Entity? {{ rel.camel_name }}) {
     return copyWith(
-      related{{ rel.to_module }}: {{ rel.field_name.replace('Id', '').lower() }},
+      related{{ rel.pascal_name }}: {{ rel.camel_name }},
     );
   }
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-  {{ pascal_case }}Entity copyWithRelated{{ rel.property_name|capitalize }}(List<{{ rel.from_module }}Entity>? {{ rel.property_name }}) {
+  {{ pascal_case }}Entity copyWithRelated{{ rel.property_name }}(List<{{ rel.from_module }}Entity>? {{ rel.camel_name }}) {
     return copyWith(
-      related{{ rel.property_name|capitalize }}: {{ rel.property_name }},
+      related{{ rel.property_name }}: {{ rel.camel_name }},
     );
   }
 {%- endfor %}
@@ -147,21 +153,25 @@ class {{ pascal_case }}Entity extends Equatable {
   /// Create a copy with modified fields
   {{ pascal_case }}Entity copyWith({
     String? id,
-{%- for field in fields %}
+{% for field in fields %}
+{%- if field.type == 'reference' %}
+    String? {{ field.name }},
+{%- else %}
     {{ field.type }}{%- if not field.type.endswith('?') %}?{%- endif %} {{ field.name }},
-{%- endfor %}
+{%- endif %}
+{% endfor %}
     DateTime? createdAt,
     DateTime? updatedAt,
-{%- if soft_delete %}
+{% if soft_delete %}
     DateTime? deletedAt,
-{%- endif %}
+{% endif %}
 {%- if has_relationships %}
     // Related entities
 {%- for rel in relationships.direct %}
-    {{ rel.to_module }}Entity? related{{ rel.to_module }},
+    {{ rel.to_module }}Entity? related{{ rel.pascal_name|capitalize }},
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-    List<{{ rel.from_module }}Entity>? related{{ rel.property_name|capitalize }},
+    List<{{ rel.from_module }}Entity>? related{{ rel.property_name }},
 {%- endfor %}
 {%- endif %}
   }) {
@@ -178,10 +188,10 @@ class {{ pascal_case }}Entity extends Equatable {
 {%- if has_relationships %}
       // Related entities
 {%- for rel in relationships.direct %}
-      related{{ rel.to_module }}: related{{ rel.to_module }} ?? this._{{ rel.field_name.replace('Id', '').lower() }},
+      related{{ rel.pascal_name|capitalize }}: related{{ rel.pascal_name|capitalize }} ?? this._{{ rel.field_name.replace('Id', '').lower() }},
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-      related{{ rel.property_name|capitalize }}: related{{ rel.property_name|capitalize }} ?? this._{{ rel.property_name }},
+      related{{ rel.property_name }}: related{{ rel.property_name }} ?? this._{{ rel.property_name }},
 {%- endfor %}
 {%- endif %}
     );

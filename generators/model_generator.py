@@ -39,6 +39,8 @@ class ModelGenerator:
                         relationships[module_name]['direct'].append({
                             'to_module': reference_module,
                             'field_name': field.get('name'),
+                            'pascal_name': self.case_converter.to_pascal_case(field.get('name').replace('Id', '')),
+                            'camel_name': self.case_converter.to_camel_case(field.get('name').replace('Id', '')),
                             'required': field.get('required', False)
                         })
 
@@ -238,7 +240,8 @@ class ModelGenerator:
             for rel in relationships['reverse']:
                 # Usar o reverse_name único que criamos
                 rel_copy = rel.copy()
-                rel_copy['property_name'] = rel['reverse_name']
+                rel_copy['property_name'] = self.case_converter.to_pascal_case(rel['reverse_name'])
+                rel_copy['camel_name'] = self.case_converter.to_camel_case(rel['reverse_name'])
                 processed_reverse.append(rel_copy)
 
             adjusted_relationships = {
@@ -274,7 +277,8 @@ class ModelGenerator:
             processed_reverse = []
             for rel in relationships['reverse']:
                 rel_copy = rel.copy()
-                rel_copy['property_name'] = rel['reverse_name']
+                rel_copy['property_name'] = self.case_converter.to_pascal_case(rel['reverse_name'])
+                rel_copy['camel_name'] = self.case_converter.to_camel_case(rel['reverse_name'])
                 processed_reverse.append(rel_copy)
 
             adjusted_relationships = {
@@ -284,6 +288,7 @@ class ModelGenerator:
 
             output = template.render(
                 module_name=module_name,
+                snake_name=self.case_converter.to_snake_case(module_name),
                 pascal_case=pascal_case,
                 fields=module_config.get('fields', []),
                 soft_delete=module_config.get('soft_delete', False),
@@ -307,6 +312,7 @@ class ModelGenerator:
             template = self.jinja_env.get_template('module/repository_interface.dart.jinja')
             output = template.render(
                 module_name=module_name,
+                snake_case=self.case_converter.to_snake_case(module_name),
                 pascal_case=pascal_case,
                 soft_delete=soft_delete
             )
@@ -323,19 +329,34 @@ class ModelGenerator:
     def _generate_repository_implementation(self, module_dir, module_name, pascal_case, module_config):
         """Generate the repository implementation for the module"""
         try:
+            relationships = self.get_module_relationships(module_name)
+            # Processar relacionamentos reversos com nomes únicos
+            processed_reverse = []
+            for rel in relationships['reverse']:
+                rel_copy = rel.copy()
+                rel_copy['pascal_name'] = self.case_converter.to_pascal_case(rel['reverse_name'])
+                rel_copy['camel_name'] = self.case_converter.to_camel_case(rel['reverse_name'])
+                processed_reverse.append(rel_copy)
+
+            adjusted_relationships = {
+                'direct': relationships['direct'],
+                'reverse': processed_reverse
+            }
+
             if self.use_sqlite:
                 from generators.sqlite_generator import SQLiteGenerator
                 sqlite_generator = SQLiteGenerator(self.app_dir, self.config)
 
                 output_dir = os.path.join(module_dir, 'data', 'repositories')
-                sqlite_generator.generate_repository_impl(module_config, output_dir)
+                sqlite_generator.generate_repository_impl(module_config, output_dir, adjusted_relationships)
             else:
                 template = self.jinja_env.get_template('module/repository_impl.dart.jinja')
                 output = template.render(
                     module_name=module_name,
                     pascal_case=pascal_case,
                     persistence_type=module_config.get('persistence', {}).get('provider', 'sqlite'),
-                    soft_delete=module_config.get('soft_delete', False)
+                    soft_delete=module_config.get('soft_delete', False),
+                    relationships=adjusted_relationships
                 )
 
                 output_path = os.path.join(module_dir, 'data', 'repositories',
@@ -359,6 +380,7 @@ class ModelGenerator:
                 template = self.jinja_env.get_template(f'module/usecases/{usecase}_usecase.dart.jinja')
                 output = template.render(
                     module_name=module_name,
+                    snake_name=self.case_converter.to_snake_case(module_name),
                     pascal_case=pascal_case,
                     soft_delete=soft_delete
                 )
@@ -427,7 +449,9 @@ class ModelGenerator:
             processed_reverse = []
             for rel in relationships['reverse']:
                 rel_copy = rel.copy()
-                rel_copy['property_name'] = rel['reverse_name']
+                rel_copy['property_name'] = self.case_converter.to_pascal_case(rel['reverse_name'])
+                rel_copy['camel_name'] = self.case_converter.to_camel_case(rel['reverse_name'])
+                rel_copy['snake_name'] = self.case_converter.to_snake_case(rel['reverse_name'])
                 processed_reverse.append(rel_copy)
 
             adjusted_relationships = {
@@ -527,17 +551,29 @@ class {pascal_case}EditScreen extends StatelessWidget {{
         try:
             template = self.jinja_env.get_template('module/relationship/relationship_service.dart.jinja')
 
-            # Custom filter para snake_case
-            def snake_case_filter(text):
-                return self.case_converter.to_snake_case(text)
+            # Processar relacionamentos reversos com nomes únicos
+            processed_reverse = []
+            for rel in relationships['reverse']:
+                rel_copy = rel.copy()
+                rel_copy['pascal_name'] = self.case_converter.to_pascal_case(rel['reverse_name'])
+                rel_copy['camel_name'] = self.case_converter.to_camel_case(rel['reverse_name'])
+                rel_copy['snake_name'] = self.case_converter.to_snake_case(rel['from_module'])
+                processed_reverse.append(rel_copy)
 
-            template.environment.filters['snake_case'] = snake_case_filter
+            adjusted_relationships = {
+                'direct': relationships['direct'],
+                'reverse': processed_reverse
+            }
+
+            print(f"Generating relationship service for {module_name}")
+            print(adjusted_relationships)
 
             output = template.render(
+                snake_case=self.case_converter.to_snake_case(module_name),
                 module_name=module_name,
                 pascal_case=pascal_case,
                 snake_case_name=self.case_converter.to_snake_case(module_name),
-                relationships=relationships
+                relationships=adjusted_relationships
             )
 
             service_dir = os.path.join(module_dir, 'data', 'services')
@@ -563,7 +599,8 @@ class {pascal_case}EditScreen extends StatelessWidget {{
             for rel in relationships['reverse']:
                 rel_copy = rel.copy()
                 rel_copy['query_name'] = f"get{rel['reverse_name'].capitalize()}"
-                rel_copy['property_name'] = rel['reverse_name']
+                rel_copy['property_name'] = self.case_converter.to_pascal_case(rel['reverse_name'])
+                rel_copy['camel_name'] = self.case_converter.to_camel_case(rel['reverse_name'])
                 processed_reverse.append(rel_copy)
 
             adjusted_relationships = {

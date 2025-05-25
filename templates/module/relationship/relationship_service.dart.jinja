@@ -1,9 +1,14 @@
 import 'package:get_it/get_it.dart';
 {% for rel in relationships.direct %}
-import '../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|snake_case }}_entity.dart';
+import '../../../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|lower }}_entity.dart';
 {% endfor %}
-import '../domain/entities/{{ snake_case_name }}_entity.dart';
-import '../domain/repositories/i_{{ snake_case_name }}_repository.dart';
+
+{% for rel in relationships.reverse %}
+import '../../../{{ rel.snake_name }}/domain/entities/{{ rel.snake_name }}_entity.dart';
+{% endfor %}
+
+import '../../domain/entities/{{ snake_case_name }}_entity.dart';
+import '../../domain/repositories/i_{{ snake_case_name }}_repository.dart';
 
 class {{ pascal_case }}RelationshipService {
   final I{{ pascal_case }}Repository _repository;
@@ -14,7 +19,7 @@ class {{ pascal_case }}RelationshipService {
 
 {% for rel in relationships.direct %}
   /// Get {{ rel.to_module }} related to this {{ module_name }}
-  Future<{{ rel.to_module }}Entity?> get{{ rel.to_module }}(String {{ rel.field_name }}) async {
+  Future<{{ rel.to_module }}Entity?> get{{ rel.pascal_name }}(String {{ rel.field_name }}) async {
     // Implementation depends on your repository structure
     return null;
   }
@@ -22,7 +27,7 @@ class {{ pascal_case }}RelationshipService {
 {% endfor %}
 {% for rel in relationships.reverse %}
   /// Get all {{ rel.from_module }} related to this {{ module_name }}
-  Future<List<{{ rel.from_module }}Entity>> get{{ rel.from_module }}List(String {{ snake_case_name }}Id) async {
+  Future<List<{{ rel.from_module }}Entity>> get{{ rel.pascal_name }}List(String {{ rel.field_name }}Id) async {
     // Implementation depends on your repository structure
     return [];
   }

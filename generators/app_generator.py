@@ -286,11 +286,19 @@ class AppGenerator:
             except Exception as e:
                 print(f"Erro ao gerar app.dart: {e}")
 
+            # Processar relacionamentos reversos com nomes únicos
+            modules = []
+            for m in self.config.get('modules', []):
+                mc = m.copy()
+                mc['snake_name'] = self.case_converter.to_snake_case(m['name'])
+                modules.append(mc)
+
+
             # Generate routes.dart
             try:
                 template = self.jinja_env.get_template('app/routes.dart.jinja')
                 output = template.render(
-                    modules=self.config.get('modules', []),
+                    modules=modules,
                     has_auth=self.config.get('auth', {}).get('enabled', False),
                     has_dashboard=self.config.get('dashboard', {}).get('enabled', False)
                 )

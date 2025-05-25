@@ -3,7 +3,11 @@ class {{ pascal_case }}RelationshipQueries {
 
 {% for rel in relationships.direct %}
   /// Join query to get {{ module_name }} with {{ rel.to_module }}
+{%- if rel.to_module == rel.pascal_name %}
   static const String getWith{{ rel.to_module }} = '''
+{%- else %}
+  static const String getWith{{ rel.to_module }}By{{ rel.pascal_name }} = '''
+{%- endif %}
     SELECT
       t1.*,
       t2.*
@@ -15,7 +19,7 @@ class {{ pascal_case }}RelationshipQueries {
 {% endfor %}
 {% for rel in relationships.reverse %}
   /// Query to get all {{ rel.from_module }} for this {{ module_name }} ({{ rel.property_name }})
-  static const String {{ rel.query_name }} = '''
+  static const String get{{ rel.property_name }} = '''
     SELECT * FROM {{ rel.from_module|lower }}
     WHERE {{ rel.field_name }} = ?
   ''';

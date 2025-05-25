@@ -37,8 +37,11 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
 
 {% if has_relationships %}
   // Reference controllers and data
+{% for to_module in relationships.direct | map(attribute='to_module') | unique | list %}
+  late {{ to_module }}Controller _{{ to_module.lower() }}Controller;
+{% endfor %}
+
 {% for rel in relationships.direct %}
-  late {{ rel.to_module }}Controller _{{ rel.to_module.lower() }}Controller;
   List<{{ rel.to_module }}Entity> _{{ rel.to_module.lower() }}Options = [];
   {{ rel.to_module }}Entity? _selected{{ rel.to_module }};
 {% endfor %}
@@ -102,8 +105,7 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
       // Set selected value if editing
       if (widget.isEditing && widget.item?.{{ rel.field_name }} != null) {
         _selected{{ rel.to_module }} = _{{ rel.to_module.lower() }}Options.firstWhere(
-          (item) => item.id == widget.item!.{{ rel.field_name }},
-          orElse: () => null,
+          (item) => item.id == widget.item!.{{ rel.field_name }}
         );
         _{{ rel.field_name }}Controller.text = _selected{{ rel.to_module }}?.id ?? '';
       }
@@ -318,9 +320,7 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
 {% for rel in relationships.direct %}
   String _getDisplayText{{ rel.to_module }}({{ rel.to_module }}Entity item) {
     // Try to find a suitable display field
-    if (item.name != null && item.name!.isNotEmpty) return item.name!;
     if (item.title != null && item.title!.isNotEmpty) return item.title!;
-    if (item.description != null && item.description!.isNotEmpty) return item.description!;
     return item.id; // Fallback to ID
   }
 {% endfor %}

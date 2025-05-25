@@ -210,7 +210,7 @@ class SQLiteGenerator:
                 return True
         return False
 
-    def generate_repository_impl(self, module_config, output_dir):
+    def generate_repository_impl(self, module_config, output_dir, relationships):
         """Generate repository implementation with SQLite support for a module"""
         try:
             module_name = module_config['name']
@@ -222,7 +222,8 @@ class SQLiteGenerator:
                 module_name=snake_case,
                 pascal_case=pascal_case,
                 fields=module_config.get('fields', []),
-                soft_delete=module_config.get('soft_delete', False)
+                soft_delete=module_config.get('soft_delete', False),
+                relationships=relationships
             )
 
             output_path = os.path.join(output_dir, f'{snake_case}_repository_impl.dart')

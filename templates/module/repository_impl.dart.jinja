@@ -18,25 +18,25 @@ class {{ pascal_case }}RepositoryImpl implements I{{ pascal_case }}Repository {
   }
 
   @override
-  Future<List<{{ pascal_case }}Entity>> getAll({% if soft_delete %}{bool includeSoftDeleted = false}{% endif %}) async {
+  Future<List<{{ pascal_case }}Entity>> getAll({%- if soft_delete %}{bool includeSoftDeleted = false}{%- endif %}) async {
     final List<Map<String, dynamic>> maps = await _sqliteHelper.getAll(
       table: _tableName,
-{% if soft_delete %}
+{%- if soft_delete %}
       includeSoftDeleted: includeSoftDeleted,
-{% endif %}
+{%- endif %}
     );
 
     return maps.map((map) => {{ pascal_case }}Model.fromJson(map).toEntity()).toList();
   }
 
   @override
-  Future<{{ pascal_case }}Entity?> getById(String id{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %}) async {
+  Future<{{ pascal_case }}Entity?> getById(String id{%- if soft_delete %}, {bool includeSoftDeleted = false}{%- endif %}) async {
     final map = await _sqliteHelper.getById(
       table: _tableName,
       id: id,
-{% if soft_delete %}
+{%- if soft_delete %}
       includeSoftDeleted: includeSoftDeleted,
-{% endif %}
+{%- endif %}
     );
 
     if (map == null) {
@@ -56,9 +56,9 @@ class {{ pascal_case }}RepositoryImpl implements I{{ pascal_case }}Repository {
       ...model.toJson(),
       'createdAt': now.toIso8601String(),
       'updatedAt': now.toIso8601String(),
-{% if soft_delete %}
+{%- if soft_delete %}
       'deletedAt': null, // Garantir que deletedAt seja null para novos registros
-{% endif %}
+{%- endif %}
     };
 
     // Remove id to let SQLiteHelper generate it (unless it's already set)
@@ -101,7 +101,7 @@ class {{ pascal_case }}RepositoryImpl implements I{{ pascal_case }}Repository {
 
   @override
   Future<void> delete(String id) async {
-{% if soft_delete %}
+{%- if soft_delete %}
     // Soft delete com timestamp
     await _sqliteHelper.update(
       table: _tableName,
@@ -111,16 +111,16 @@ class {{ pascal_case }}RepositoryImpl implements I{{ pascal_case }}Repository {
         'updatedAt': DateTime.now().toIso8601String(),
       },
     );
-{% else %}
+{%- else %}
     // Hard delete
     await _sqliteHelper.delete(
       table: _tableName,
       id: id,
     );
-{% endif %}
+{%- endif %}
   }
 
-{% if soft_delete %}
+{%- if soft_delete %}
   /// Remove permanentemente o registro do banco de dados (hard delete)
   Future<void> hardDelete(String id) async {
     await _sqliteHelper.delete(
@@ -145,53 +145,53 @@ class {{ pascal_case }}RepositoryImpl implements I{{ pascal_case }}Repository {
   Future<List<{{ pascal_case }}Entity>> getAllWithDeleted() async {
     return await getAll(includeSoftDeleted: true);
   }
-{% endif %}
+{%- endif %}
 
   /// Search for entities by query string across multiple fields
-  Future<List<{{ pascal_case }}Entity>> search(String query{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %}) async {
+  Future<List<{{ pascal_case }}Entity>> search(String query{%- if soft_delete %}, {bool includeSoftDeleted = false}{%- endif %}) async {
     final List<Map<String, dynamic>> maps = await _sqliteHelper.search(
       table: _tableName,
       query: query,
       fields: [
-{% for field in fields %}
-{% if field.type == 'String' %}
+{%- for field in fields %}
+{%- if field.type == 'String' %}
         '{{ field.name }}',
-{% endif %}
-{% endfor %}
+{%- endif %}
+{%- endfor %}
       ],
-{% if soft_delete %}
+{%- if soft_delete %}
       includeSoftDeleted: includeSoftDeleted,
-{% endif %}
+{%- endif %}
     );
 
     return maps.map((map) => {{ pascal_case }}Model.fromJson(map).toEntity()).toList();
   }
 
   /// Count total entities
-  Future<int> count({% if soft_delete %}{bool includeSoftDeleted = false}{% endif %}) async {
+  Future<int> count({%- if soft_delete %}{bool includeSoftDeleted = false}{%- endif %}) async {
     return await _sqliteHelper.count(
       table: _tableName,
-{% if soft_delete %}
+{%- if soft_delete %}
       includeSoftDeleted: includeSoftDeleted,
-{% endif %}
+{%- endif %}
     );
   }
-{% for field in fields %}
-{% if field.type == 'reference' or field.reference is defined %}
+{%- for field in fields | unique(attribute='reference') %}
+{%- if field.type == 'reference' or field.reference is defined %}
 
   /// Get {{ pascal_case }} entities related to {{ field.reference }}
-  Future<List<{{ pascal_case }}Entity>> getBy{{ field.reference }}Id(String {{ field.reference|lower }}Id{% if soft_delete %}, {bool includeSoftDeleted = false}{% endif %}) async {
+  Future<List<{{ pascal_case }}Entity>> getBy{{ field.reference }}Id(String {{ field.reference|lower }}Id{%- if soft_delete %}, {bool includeSoftDeleted = false}{%- endif %}) async {
     final List<Map<String, dynamic>> maps = await _sqliteHelper.getAll(
       table: _tableName,
       where: '{{ field.name }}Id = ?',
       whereArgs: [{{ field.reference|lower }}Id],
-{% if soft_delete %}
+{%- if soft_delete %}
       includeSoftDeleted: includeSoftDeleted,
-{% endif %}
+{%- endif %}
     );
 
     return maps.map((map) => {{ pascal_case }}Model.fromJson(map).toEntity()).toList();
   }
-{% endif %}
-{% endfor %}
+{%- endif %}
+{%- endfor %}
 }

@@ -344,7 +344,7 @@ modules:
         type: "String"  # Director, Timer, etc.
       - name: "roles"
         type: "List<String>"
-        default: "['user']"  # admin, user, timer, director
+        default: "const ['user']"  # admin, user, timer, director
     soft_delete: true
     export:
       csv: true

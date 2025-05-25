@@ -1,5 +1,5 @@
 import 'dart:convert';
-import '../../domain/entities/{{ module_name|lower }}_entity.dart';
+import '../../domain/entities/{{ snake_name }}_entity.dart';
 
 {%- if has_relationships %}
 {%- for import in related_imports %}
@@ -29,7 +29,7 @@ class {{ pascal_case }}Model {
   final {{ rel.to_module }}Model? {{ rel.field_name.replace('Id', '').lower() }};
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-  final List<{{ rel.from_module }}Model>? {{ rel.property_name }};
+  final List<{{ rel.from_module }}Model>? {{ rel.camel_name }};
 {%- endfor %}
 {%- endif %}
 
@@ -71,10 +71,10 @@ class {{ pascal_case }}Model {
     this.{{ rel.field_name.replace('Id', '').lower() }},
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-    this.{{ rel.property_name }},
+    this.{{ rel.camel_name }},
 {%- endfor %}
 {%- endif %}
-{%- if fields | selectattr('type', 'equalto', 'DateTime') | list and fields | selectattr('required', 'equalto', False) | list %}
+{%- if fields | selectattr('type', 'equalto', 'DateTime') | rejectattr('required', 'equalto', True) | list %}
   }) : {%- for field in fields if field.type == 'DateTime' and not field.required %}
     {{ field.name }} = {{ field.name }} ?? DateTime(1970, 1, 1)
     {%- if not loop.last %}, {% endif %}
@@ -98,11 +98,13 @@ class {{ pascal_case }}Model {
 {%- endif %}
 {%- if has_relationships %}
       // Related entities
+      // direct entities
 {%- for rel in relationships.direct %}
-      related{{ rel.to_module }}: {{ rel.field_name.replace('Id', '').lower() }}?.toEntity(),
+      related{{ rel.pascal_name }}: {{ rel.pascal_name.lower() }}?.toEntity(),
 {%- endfor %}
+      // reverse entities
 {%- for rel in relationships.reverse %}
-      related{{ rel.property_name|capitalize }}: {{ rel.property_name }}?.map((m) => m.toEntity()).toList(),
+      related{{ rel.property_name }}: {{ rel.reverse_name }}?.map((m) => m.toEntity()).toList(),
 {%- endfor %}
 {%- endif %}
     );
@@ -126,7 +128,7 @@ class {{ pascal_case }}Model {
       {{ rel.field_name.replace('Id', '').lower() }}: null,
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-      {{ rel.property_name }}: null,
+      {{ rel.camel_name }}: null,
 {%- endfor %}
 {%- endif %}
     );
@@ -178,8 +180,8 @@ class {{ pascal_case }}Model {
           : null,
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-      {{ rel.property_name }}: json['{{ rel.property_name }}'] != null
-          ? (json['{{ rel.property_name }}'] as List)
+      {{ rel.camel_name }}: json['{{ rel.camel_name }}'] != null
+          ? (json['{{ rel.camel_name }}'] as List)
               .map((item) => {{ rel.from_module }}Model.fromJson(item))
               .toList()
           : null,
@@ -218,8 +220,8 @@ class {{ pascal_case }}Model {
     }
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-    if ({{ rel.property_name }} != null) {
-      json['{{ rel.property_name }}'] = {{ rel.property_name }}!.map((item) => item.toJson()).toList();
+    if ({{ rel.camel_name }} != null) {
+      json['{{ rel.camel_name }}'] = {{ rel.camel_name }}!.map((item) => item.toJson()).toList();
     }
 {%- endfor %}
 {%- endif %}
@@ -248,7 +250,7 @@ class {{ pascal_case }}Model {
     {{ rel.to_module }}Model? {{ rel.field_name.replace('Id', '').lower() }},
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-    List<{{ rel.from_module }}Model>? {{ rel.property_name }},
+    List<{{ rel.from_module }}Model>? {{ rel.camel_name }},
 {%- endfor %}
 {%- endif %}
   }) {
@@ -268,7 +270,7 @@ class {{ pascal_case }}Model {
       {{ rel.field_name.replace('Id', '').lower() }}: {{ rel.field_name.replace('Id', '').lower() }} ?? this.{{ rel.field_name.replace('Id', '').lower() }},
 {%- endfor %}
 {%- for rel in relationships.reverse %}
-      {{ rel.property_name }}: {{ rel.property_name }} ?? this.{{ rel.property_name }},
+      {{ rel.camel_name }}: {{ rel.camel_name }} ?? this.{{ rel.camel_name }},
 {%- endfor %}
 {%- endif %}
     );

@@ -10,10 +10,10 @@ import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/auth/presentation/screens/profile_screen.dart';
 {%- endif %}
 {%- for module in modules %}
-import '../features/{{ module.name|lower }}/presentation/screens/{{ module.name|lower }}_list_screen.dart';
-import '../features/{{ module.name|lower }}/presentation/screens/{{ module.name|lower }}_detail_screen.dart';
-import '../features/{{ module.name|lower }}/presentation/screens/{{ module.name|lower }}_create_screen.dart';
-import '../features/{{ module.name|lower }}/presentation/screens/{{ module.name|lower }}_edit_screen.dart';
+import '../features/{{ module.snake_name }}/presentation/screens/{{ module.snake_name }}_list_screen.dart';
+import '../features/{{ module.snake_name }}/presentation/screens/{{ module.snake_name }}_detail_screen.dart';
+import '../features/{{ module.snake_name }}/presentation/screens/{{ module.snake_name }}_create_screen.dart';
+import '../features/{{ module.snake_name }}/presentation/screens/{{ module.snake_name }}_edit_screen.dart';
 {%- endfor %}
 
 class AppRoutes {

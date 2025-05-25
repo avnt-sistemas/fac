@@ -183,7 +183,7 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 {% if has_relationships and relationships.reverse %}
             // Show count of related items
 {% for rel in relationships.reverse %}
-            Text('{{ rel.property_name|capitalize|replace("ListAs", " as ") }}: ${item.{{ rel.property_name }}.length}'),
+            Text('{{ rel.property_name|replace("ListAs", " as ") }}: ${item.{{ rel.property_name }}.length}'),
 {% endfor %}
 {% endif %}
           ],
@@ -226,7 +226,7 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
   String _get{{ rel.to_module }}Name(String? {{ rel.field_name }}) {
     if ({{ rel.field_name }} == null || {{ rel.field_name }}.isEmpty) return 'N/A';
     final related = _{{ rel.to_module.lower() }}Cache[{{ rel.field_name }}];
-    return related?.name ?? related?.id ?? 'Unknown'; // Assuming name field exists, fallback to id
+    return related?.title ?? related?.id ?? 'Unknown'; // Assuming name field exists, fallback to id
   }
 {% endfor %}
 {% endif %}
