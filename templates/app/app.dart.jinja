@@ -1,3 +1,5 @@
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
@@ -79,6 +81,16 @@ class MyApp extends StatelessWidget {
         initialRoute: AppRoutes.initial,
         routes: AppRoutes.routes,
         debugShowCheckedModeBanner: false,
+
+        // 👇 Aqui está o suporte a i18n
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        // locale: Locale('pt'), // descomente para forçar um idioma específico
       ),
     );
   }

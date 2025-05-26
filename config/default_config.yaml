@@ -38,3 +38,6 @@ modules:
 
 dashboard:
   enabled: false
+
+translations:
+  enabled: true

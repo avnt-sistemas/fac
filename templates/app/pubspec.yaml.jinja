@@ -14,7 +14,7 @@ dependencies:
   provider: ^6.0.5
   get_it: ^7.6.0
   # Formatação e localização
-  intl: ^0.18.1
+  intl: ^0.19.0
   # HTTP e Cache
   dio: ^5.3.2
   shared_preferences: ^2.2.0
@@ -68,6 +68,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
   assets:
+    - assets/db/
     - assets/images/
     - assets/icons/
+  localization:
+    arb-dir: lib/l10n
+    template-arb-file: intl_en.arb
+    output-localization-file: app_localizations.dart
+    output-class: AppLocalizations

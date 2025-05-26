@@ -206,7 +206,8 @@ class AppGenerator:
             'test/domain',
             'test/features',
             'integration_test',
-            'assets/db'  # Para armazenar migrações SQL
+            'assets/db',  # Para armazenar migrações SQL
+            'lib/l10n', # Para arquivos de tradução
         ]
 
         for dir_path in dirs:
@@ -221,6 +222,12 @@ class AppGenerator:
 
         # Generate core error handlers
         self._generate_error_handlers(app_dir)
+
+        # Generate localizations
+        if self.config.get('translations', {}).get('enabled', True):
+            print("Generating localizations...")
+            self._generate_localizations(app_dir)
+
 
     def _generate_app_files(self, app_dir):
         """Generate the base application files"""
@@ -414,11 +421,12 @@ class AppGenerator:
                 "dio: ^5.3.2",  # HTTP client
                 "equatable: ^2.0.5",  # Value equality
                 "shared_preferences: ^2.2.0",  # Local storage
-                "intl: ^0.18.1",  # Internationalization
+                "intl: ^0.19.0",  # Internationalization
                 "sqflite: ^2.2.8+4",  # Local database - always needed now
                 "path: ^1.8.3",  # Path utilities - needed for database
                 "uuid: ^4.1.0",  # Generate UUIDs for SQLite
                 "path_provider: ^2.1.1",  # Access to file system directories
+                "flutter_localizations:\n    sdk: flutter",  # CORRETO
             ]
 
             # Add Firebase dependencies if using Firebase
@@ -471,6 +479,20 @@ class AppGenerator:
                         # Insert the new dependency
                         pubspec_content = pubspec_content[:dependencies_end] + f'\n  {dependency}' + pubspec_content[
                                                                                                      dependencies_end:]
+            
+
+            # Encontrar a seção flutter principal (fora de dependencies)
+            flutter_match = re.search(r'\nflutter:\n((?: {2,}.*\n?)*)', pubspec_content)
+            if flutter_match:
+                flutter_block = flutter_match.group(0)
+                if 'generate:' not in flutter_block:
+                    # Adiciona generate: true depois da primeira linha "flutter:"
+                    new_flutter_block = flutter_block.rstrip() + '\n  generate: true\n'
+                    pubspec_content = pubspec_content.replace(flutter_block, new_flutter_block)
+            else:
+                # Se não existe a seção flutter, adiciona no final
+                pubspec_content += '\nflutter:\n  uses-material-design: true\n  generate: true\n'
+
 
             # Write updated pubspec
             with open(pubspec_path, 'w', encoding='utf-8', newline='\n') as f:
@@ -479,3 +501,24 @@ class AppGenerator:
         except Exception as e:
             print(f"Error updating pubspec.yaml: {e}")
             print("You may need to manually add the required dependencies.")
+
+    def _generate_localizations(self, app_dir):
+        """Generate .arb translation files"""
+        try:
+            l10n_dir = os.path.join(app_dir, 'lib', 'l10n')
+            os.makedirs(l10n_dir, exist_ok=True)
+
+            # Render en
+            template = self.jinja_env.get_template('l10n/app_en.arb.jinja')
+            output = template.render(app_name=self.config['app']['name'])
+            with open(os.path.join(l10n_dir, 'app_en.arb'), 'w', encoding='utf-8') as f:
+                f.write(output)
+
+            # Render pt
+            template = self.jinja_env.get_template('l10n/app_pt.arb.jinja')
+            output = template.render(app_name=self.config['app']['name'])
+            with open(os.path.join(l10n_dir, 'app_pt.arb'), 'w', encoding='utf-8') as f:
+                f.write(output)
+
+        except Exception as e:
+            print(f"Erro ao gerar arquivos de tradução: {e}")
