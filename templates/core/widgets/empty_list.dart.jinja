@@ -7,12 +7,12 @@ class EmptyList extends StatelessWidget {
   final IconData? icon;
 
   const EmptyList({
-    Key? key,
+    super.key,
     this.message = 'No items found',
     this.actionLabel,
     this.onAction,
     this.icon = Icons.inbox,
-  }) : super(key: key);
+  }) ;
 
   @override
   Widget build(BuildContext context) {

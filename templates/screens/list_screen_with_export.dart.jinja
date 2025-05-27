@@ -7,7 +7,7 @@ import '../../domain/entities/{{ snake_case_name }}_entity.dart';
 import '../controllers/{{ snake_case_name }}_controller.dart';
 
 class {{ entity_name }}ListScreen extends StatefulWidget {
-  const {{ entity_name }}ListScreen({Key? key}) : super(key: key);
+  const {{ entity_name }}ListScreen({super.key});
 
   @override
   State<{{ entity_name }}ListScreen> createState() => _{{ entity_name }}ListScreenState();
@@ -21,6 +21,10 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
   void initState() {
     super.initState();
     _controller = Provider.of<{{ entity_name }}Controller>(context, listen: false);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureDataLoaded();
+    });
     // Não iniciamos o carregamento aqui
   }
 
@@ -44,7 +48,7 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
   @override
   Widget build(BuildContext context) {
     // Iniciamos o carregamento aqui, depois que o widget foi construído
-    _ensureDataLoaded();
+    //_ensureDataLoaded();
 
     return Scaffold(
       appBar: AppBar(

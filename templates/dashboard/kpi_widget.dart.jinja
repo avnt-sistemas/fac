@@ -8,11 +8,11 @@ class KPIWidget extends StatelessWidget {
   final String operation;
 
   const KPIWidget({
-    Key? key,
+    super.key,
     required this.title,
     required this.dataSource,
     required this.operation,
-  }) : super(key: key);
+  }) ;
 
   @override
   Widget build(BuildContext context) {

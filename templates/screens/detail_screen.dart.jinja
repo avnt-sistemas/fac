@@ -1,3 +1,4 @@
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../app/theme/app_text_styles.dart';
@@ -18,7 +19,7 @@ import '../../../{{ rel.snake_name }}/presentation/controllers/{{ rel.snake_name
 {%- endif %}
 
 class {{ entity_name }}DetailScreen extends StatefulWidget {
-  const {{ entity_name }}DetailScreen({Key? key}) : super(key: key);
+  const {{ entity_name }}DetailScreen({super.key});
 
   @override
   State<{{ entity_name }}DetailScreen> createState() => _{{ entity_name }}DetailScreenState();
@@ -91,8 +92,9 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('{{ entity_name }} not found'),
+            SnackBar(
+              //content: Text('{{ entity_name }} not found'),
+              content: Text(AppLocalizations.of(context)!.notFound( '{{ entity_name }}')),
               backgroundColor: Colors.red,
             ),
           );
@@ -109,7 +111,8 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading {{ entity_name }}: $e'),
+            //content: Text('Error loading {{ entity_name }}: $e'),
+            content: Text(AppLocalizations.of(context)!.errorLoading( '{{ entity_name }}')),
             backgroundColor: Colors.red,
           ),
         );
@@ -154,7 +157,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading related data: $e'),
+            content: Text('${AppLocalizations.of(context)!.errorLoadingRelated}: $e'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -174,7 +177,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
     if (_item == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('{{ entity_name }} Details'),
+          title: Text(AppLocalizations.of(context)!.detailsTitle('{{entity_name}}')),
         ),
         body: const LoadingIndicator(),
       );
@@ -253,14 +256,14 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
                 const Icon(Icons.calendar_today, size: 16),
                 const SizedBox(width: Dimensions.marginS),
                 Text(
-                  'Created: ${_item!.createdAt.toString().substring(0, 10)}',
+                  '${AppLocalizations.of(context)!.createdLabel}: ${_item!.createdAt.toString().substring(0, 10)}',
                   style: AppTextStyles.caption,
                 ),
                 const SizedBox(width: Dimensions.marginM),
                 const Icon(Icons.update, size: 16),
                 const SizedBox(width: Dimensions.marginS),
                 Text(
-                  'Updated: ${_item!.updatedAt.toString().substring(0, 10)}',
+                  '${AppLocalizations.of(context)!.updatedLabel}: ${_item!.updatedAt.toString().substring(0, 10)}',
                   style: AppTextStyles.caption,
                 ),
               ],
@@ -282,8 +285,8 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Details',
+            Text(
+              AppLocalizations.of(context)!.detailsSectionTitle,
               style: AppTextStyles.headline6,
             ),
             const Divider(),
@@ -457,17 +460,19 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Deletion'),
+        //title: const Text('Confirm Deletion'),
+        title: Text(AppLocalizations.of(context)!.confirmDelete),
         content: Text(
 {%- if has_relationships and relationships.reverse %}
-          'Are you sure you want to delete this {{ entity_name }}?\n\n'
+          'AppLocalizations.of(context)!.confirmDeleteMsg( '{{ entity_name }}'))?\n\n'
           'This will also affect:\n'
 {%- for rel in relationships.reverse %}
           '• ${_{{ rel.camel_name }}.length} {{ rel.property_name|replace("ListAs", " as ")|capitalize }}\n'
 {%- endfor %}
           '\nThis action cannot be undone.',
 {%- else %}
-          'Are you sure you want to delete this {{ entity_name }}? This action cannot be undone.',
+    '${AppLocalizations.of(context)!.confirmDeleteMsg("{{ entity_name }}")}' 
+    '${AppLocalizations.of(context)!.irreversible}',
 {%- endif %}
         ),
         actions: [
@@ -475,7 +480,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.btnCancel),
           ),
           TextButton(
             onPressed: () async {
@@ -489,8 +494,9 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
                 if (mounted) {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('{{ entity_name }} deleted successfully'),
+                    SnackBar(
+                      //content: Text('{{ entity_name }} deleted successfully'),
+                      content: Text(AppLocalizations.of(context)!.deletedSuccess( '{{ entity_name }}')),
                     ),
                   );
                 }
@@ -506,7 +512,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(AppLocalizations.of(context)!.btnDelete),
           ),
         ],
       ),

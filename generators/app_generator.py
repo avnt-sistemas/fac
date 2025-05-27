@@ -228,6 +228,9 @@ class AppGenerator:
             print("Generating localizations...")
             self._generate_localizations(app_dir)
 
+        # Generate flutter commands
+        self.app_dir = app_dir 
+        self._run_flutter_commands()
 
     def _generate_app_files(self, app_dir):
         """Generate the base application files"""
@@ -522,3 +525,16 @@ class AppGenerator:
 
         except Exception as e:
             print(f"Erro ao gerar arquivos de tradução: {e}")
+
+    def _run_flutter_commands(self):
+        """Run flutter commands inside the generated Flutter app directory"""
+        try:
+            print("Running `flutter pub get` in", self.app_dir)
+            subprocess.run(["flutter", "pub", "get"], cwd=self.app_dir, check=True)
+
+            print("Running `flutter gen-l10n`...")
+            subprocess.run(["flutter", "gen-l10n"], cwd=self.app_dir, check=True)
+
+            print("Flutter commands completed successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error running Flutter commands: {e}")

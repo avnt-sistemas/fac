@@ -491,7 +491,7 @@ class ModelGenerator:
 import './{snake_case_name}_form_screen.dart';
 
 class {pascal_case}CreateScreen extends StatelessWidget {{
-  const {pascal_case}CreateScreen({{Key? key}}) : super(key: key);
+  const {pascal_case}CreateScreen({{super.key}}) ;
 
   @override
   Widget build(BuildContext context) {{
@@ -510,7 +510,7 @@ import '../../domain/entities/{snake_case_name}_entity.dart';
 import './{snake_case_name}_form_screen.dart';
 
 class {pascal_case}EditScreen extends StatelessWidget {{
-  const {pascal_case}EditScreen({{Key? key}}) : super(key: key);
+  const {pascal_case}EditScreen({{super.key}}) ;
 
   @override
   Widget build(BuildContext context) {{

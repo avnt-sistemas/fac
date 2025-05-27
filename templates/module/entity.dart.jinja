@@ -94,8 +94,8 @@ class {{ pascal_case }}Entity extends Equatable {
   });
 {% endif %}
 
-  get title => "nao implementado";
-  get subtitle => "nao implementado";
+  String get displayTitle => title.isEmpty ? 'Sem título' : title;
+  String get subtitle => "não implementado";
 
   @override
   List<Object?> get props => [
