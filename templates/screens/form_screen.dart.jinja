@@ -1,472 +1,122 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../../app/theme/dimensions.dart';
-import '../../../../core/widgets/loading_indicator.dart';
-import '../../domain/entities/{{ snake_case_name }}_entity.dart';
-import '../controllers/{{ snake_case_name }}_controller.dart';
-{% if has_relationships %}
-{% for rel in relationships.direct %}
-import '../../../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|lower }}_entity.dart';
-import '../../../{{ rel.to_module|lower }}/presentation/controllers/{{ rel.to_module|lower }}_controller.dart';
-{% endfor %}
-{% endif %}
+  import 'package:flutter/material.dart';
+  import 'package:provider/provider.dart';
+  import '../../../../app/theme/dimensions.dart';
+  import '../../../../core/widgets/loading_indicator.dart';
+  import '../../domain/entities/{{ snake_case_name }}_entity.dart';
+  import '../controllers/{{ snake_case_name }}_controller.dart';
+  import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-class {{ entity_name }}FormScreen extends StatefulWidget {
-  final {{ entity_name }}Entity? item;
-  final bool isEditing;
+  {% if has_relationships %}
+  {% for rel in relationships.direct %}
+  import '../../../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|lower }}_entity.dart';
+  import '../../../{{ rel.to_module|lower }}/presentation/controllers/{{ rel.to_module|lower }}_controller.dart';
+  {% endfor %}
+  {% endif %}
 
-  const {{ entity_name }}FormScreen({
-    Key? key,
-    this.item,
-    this.isEditing = false,
-  }) : super(key: key);
+  class {{ entity_name }}FormScreen extends StatefulWidget {
+    final {{ entity_name }}Entity? item;
+    final bool isEditing;
 
-  @override
-  State<{{ entity_name }}FormScreen> createState() => _{{ entity_name }}FormScreenState();
-}
+    const {{ entity_name }}FormScreen({
+      super.key,
+      this.item,
+      this.isEditing = false,
+    }) ;
 
-class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late {{ entity_name }}Controller _controller;
-  bool _isLoading = false;
-
-  // Form field controllers
-{% for field in fields %}
-  late TextEditingController _{{ field.name }}Controller;
-{% endfor %}
-
-{% if has_relationships %}
-  // Reference controllers and data
-{% for rel in relationships.direct %}
-  late {{ rel.to_module }}Controller _{{ rel.camel_name }}Controller;
-{% endfor %}
-
-{% for rel in relationships.direct %}
-  List<{{ rel.to_module }}Entity> _{{ rel.camel_name }}Options = [];
-  {{ rel.to_module }}Entity? _selected{{ rel.pascal_name }};
-{% endfor %}
-{% endif %}
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = Provider.of<{{ entity_name }}Controller>(context, listen: false);
-
-{% if has_relationships %}
-    // Initialize reference controllers
-{% for rel in relationships.direct %}
-    _{{ rel.camel_name }}Controller = Provider.of<{{ rel.to_module }}Controller>(context, listen: false);
-{% endfor %}
-{% endif %}
-
-    // Initialize controllers
-{% for field in fields %}
-{% if field.type == 'reference' %}
-    _{{ field.name }}Controller = TextEditingController();
-{% elif field.type == 'String' %}
-    _{{ field.name }}Controller = TextEditingController(text: widget.item?.{{ field.name }} ?? '');
-{% elif field.type == 'int' or field.type == 'double' %}
-    _{{ field.name }}Controller = TextEditingController(
-      text: widget.item?.{{ field.name }}?.toString() ?? '',
-    );
-{% elif field.type == 'bool' %}
-    _{{ field.name }}Controller = TextEditingController(
-      text: (widget.item?.{{ field.name }} ?? false) ? 'true' : 'false',
-    );
-{% elif field.type == 'DateTime' or field.type == 'DateTime?' %}
-    _{{ field.name }}Controller = TextEditingController(
-      text: widget.item?.{{ field.name }}?.toString().substring(0, 10) ?? '',
-    );
-{% else %}
-    _{{ field.name }}Controller = TextEditingController(
-      text: widget.item?.{{ field.name }}?.toString() ?? '',
-    );
-{% endif %}
-{% endfor %}
-
-{% if has_relationships %}
-    // Load reference data
-    _loadReferenceData();
-{% endif %}
+    @override
+    State<{{ entity_name }}FormScreen> createState() => _{{ entity_name }}FormScreenState();
   }
 
-{% if has_relationships %}
-  Future<void> _loadReferenceData() async {
-    setState(() {
-      _isLoading = true;
-    });
+  class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScreen> {
+    final _formKey = GlobalKey<FormState>();
+    late {{ entity_name }}Controller _controller;
+    bool _isLoading = false;
 
-    try {
-{% for rel in relationships.direct %}
-      // Load {{ rel.to_module }} options
-      await _{{ rel.camel_name }}Controller.getAll();
-      _{{ rel.camel_name }}Options = _{{ rel.camel_name }}Controller.items;
+    // Form field controllers
+  {% for field in fields %}
+    late TextEditingController _{{ field.name }}Controller;
+  {% endfor %}
 
-      // Set selected value if editing
-      if (widget.isEditing && widget.item?.{{ rel.field_name }} != null) {
-        _selected{{ rel.pascal_name }} = _{{ rel.camel_name }}Options.firstWhere(
-          (item) => item.id == widget.item!.{{ rel.field_name }}
-        );
-        _{{ rel.field_name }}Controller.text = _selected{{ rel.pascal_name }}?.id ?? '';
-      }
-{% endfor %}
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading reference data: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+  {% if has_relationships %}
+    // Reference controllers and data
+  {% for rel in relationships.direct %}
+    late {{ rel.to_module }}Controller _{{ rel.camel_name }}Controller;
+  {% endfor %}
+
+  {% for rel in relationships.direct %}
+    List<{{ rel.to_module }}Entity> _{{ rel.camel_name }}Options = [];
+    {{ rel.to_module }}Entity? _selected{{ rel.pascal_name }};
+  {% endfor %}
+  {% endif %}
+
+    @override
+    void initState() {
+      super.initState();
+      _controller = Provider.of<{{ entity_name }}Controller>(context, listen: false);
+
+  {% if has_relationships %}
+      // Initialize reference controllers
+  {% for rel in relationships.direct %}
+      _{{ rel.camel_name }}Controller = Provider.of<{{ rel.to_module }}Controller>(context, listen: false);
+  {% endfor %}
+  {% endif %}
+
+      // Initialize controllers
+  {% for field in fields %}
+  {% if field.type == 'reference' %}
+      _{{ field.name }}Controller = TextEditingController();
+  {% elif field.type == 'String' %}
+      _{{ field.name }}Controller = TextEditingController(text: widget.item?.{{ field.name }} ?? '');
+  {% elif field.type == 'int' or field.type == 'double' %}
+      _{{ field.name }}Controller = TextEditingController(
+        text: widget.item?.{{ field.name }}?.toString() ?? '',
+      );
+  {% elif field.type == 'bool' %}
+      _{{ field.name }}Controller = TextEditingController(
+        text: (widget.item?.{{ field.name }} ?? false) ? 'true' : 'false',
+      );
+  {% elif field.type == 'DateTime' or field.type == 'DateTime?' %}
+      _{{ field.name }}Controller = TextEditingController(
+        text: widget.item?.{{ field.name }}?.toString().substring(0, 10) ?? '',
+      );
+  {% else %}
+      _{{ field.name }}Controller = TextEditingController(
+        text: widget.item?.{{ field.name }}?.toString() ?? '',
+      );
+  {% endif %}
+  {% endfor %}
+
+  {% if has_relationships %}
+      // Load reference data
+      _loadReferenceData();
+  {% endif %}
     }
-  }
-{% endif %}
 
-  @override
-  void dispose() {
-{% for field in fields %}
-    _{{ field.name }}Controller.dispose();
-{% endfor %}
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEditing ? 'Edit {{ entity_name }}' : 'Create {{ entity_name }}'),
-      ),
-      body: _isLoading
-          ? const LoadingIndicator()
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(Dimensions.paddingM),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildFormFields(),
-                    const SizedBox(height: Dimensions.marginL),
-                    _buildButtons(),
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
-
-  Widget _buildFormFields() {
-    return Column(
-      children: [
-{% for field in fields %}
-{% if field.type == 'reference' %}
-{% elif field.type == 'String' %}
-        TextFormField(
-          controller: _{{ field.name }}Controller,
-          decoration: const InputDecoration(
-            labelText: '{{ field.name | capitalize }}',
-            hintText: 'Enter {{ field.name }}',
-          ),
-          validator: {% if field.required is defined and field.required %}(value) {
-            if (value == null || value.isEmpty) {
-              return '{{ field.name | capitalize }} is required';
-            }
-            return null;
-          }{% else %}null{% endif %},
-        ),
-{% elif field.type == 'int' %}
-        TextFormField(
-          controller: _{{ field.name }}Controller,
-          decoration: const InputDecoration(
-            labelText: '{{ field.name | capitalize }}',
-            hintText: 'Enter {{ field.name }}',
-          ),
-          keyboardType: TextInputType.number,
-          validator: {% if field.required is defined and field.required %}(value) {
-            if (value == null || value.isEmpty) {
-              return '{{ field.name | capitalize }} is required';
-            }
-            try {
-              int.parse(value);
-            } catch (e) {
-              return 'Please enter a valid number';
-            }
-            return null;
-          }{% else %}(value) {
-            if (value != null && value.isNotEmpty) {
-              try {
-                int.parse(value);
-              } catch (e) {
-                return 'Please enter a valid number';
-              }
-            }
-            return null;
-          }{% endif %},
-        ),
-{% elif field.type == 'double' %}
-        TextFormField(
-          controller: _{{ field.name }}Controller,
-          decoration: const InputDecoration(
-            labelText: '{{ field.name | capitalize }}',
-            hintText: 'Enter {{ field.name }}',
-          ),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: {% if field.required is defined and field.required %}(value) {
-            if (value == null || value.isEmpty) {
-              return '{{ field.name | capitalize }} is required';
-            }
-            try {
-              double.parse(value);
-            } catch (e) {
-              return 'Please enter a valid number';
-            }
-            return null;
-          }{% else %}(value) {
-            if (value != null && value.isNotEmpty) {
-              try {
-                double.parse(value);
-              } catch (e) {
-                return 'Please enter a valid number';
-              }
-            }
-            return null;
-          }{% endif %},
-        ),
-{% elif field.type == 'bool' %}
-        SwitchListTile(
-          title: const Text('{{ field.name | capitalize }}'),
-          value: _{{ field.name }}Controller.text == 'true',
-          onChanged: (bool value) {
-            setState(() {
-              _{{ field.name }}Controller.text = value ? 'true' : 'false';
-            });
-          },
-        ),
-{% elif field.type == 'DateTime' or field.type == 'DateTime?' %}
-        TextFormField(
-          controller: _{{ field.name }}Controller,
-          decoration: InputDecoration(
-            labelText: '{{ field.name | capitalize }}',
-            hintText: 'YYYY-MM-DD',
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.calendar_today),
-              onPressed: () => _selectDate(context, _{{ field.name }}Controller),
-            ),
-          ),
-          readOnly: true,
-          validator: {% if field.required is defined and field.required %}(value) {
-            if (value == null || value.isEmpty) {
-              return '{{ field.name | capitalize }} is required';
-            }
-            return null;
-          }{% else %}null{% endif %},
-        ),
-{% else %}
-        TextFormField(
-          controller: _{{ field.name }}Controller,
-          decoration: const InputDecoration(
-            labelText: '{{ field.name | capitalize }}',
-            hintText: 'Enter {{ field.name }}',
-          ),
-          validator: {% if field.required is defined and field.required %}(value) {
-            if (value == null || value.isEmpty) {
-              return '{{ field.name | capitalize }} is required';
-            }
-            return null;
-          }{% else %}null{% endif %},
-        ),
-{% endif %}
-        const SizedBox(height: Dimensions.marginM),
-{% endfor %}
-{%- if has_relationships and relationships.direct %}
-{%- for rel in relationships.direct %}
-        // Reference field for {{ rel.field_name }}
-        DropdownButtonFormField<{{ rel.to_module }}Entity>(
-          value: _selected{{ rel.pascal_name }},
-          decoration: const InputDecoration(
-            labelText: '{{ rel.field_name | capitalize }}',
-            hintText: 'Select {{ rel.to_module }}',
-          ),
-          items: _{{ rel.camel_name }}Options.map((item) {
-            return DropdownMenuItem<{{ rel.to_module }}Entity>(
-              value: item,
-              child: Text(_getDisplayText{{ rel.pascal_name }}(item)),
-            );
-          }).toList(),
-          onChanged: ({{ rel.to_module }}Entity? value) {
-            setState(() {
-              _selected{{ rel.pascal_name }} = value;
-              _{{ rel.field_name }}Controller.text = value?.id ?? '';
-            });
-          },
-          validator: {% if rel.required is defined and rel.required %}(value) {
-            if (value == null) {
-              return '{{ rel.field_name | capitalize }} is required';
-            }
-            return null;
-          }{% else %}null{% endif %},
-        ),
-{%- endfor %}
-{%- endif %}
-      ],
-    );
-  }
-
-{% if has_relationships %}
-  // Helper methods to get display text for dropdowns
-{% for rel in relationships.direct %}
-  String _getDisplayText{{ rel.pascal_name }}({{ rel.to_module }}Entity item) {
-    // Try to find a suitable display field
-    if (item.title != null && item.title!.isNotEmpty) return item.title!;
-    return item.id; // Fallback to ID
-  }
-{% endfor %}
-{% endif %}
-
-  Widget _buildButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text('Cancel'),
-        ),
-        const SizedBox(width: Dimensions.marginM),
-        ElevatedButton(
-          onPressed: _saveForm,
-          child: Text(widget.isEditing ? 'Update' : 'Create'),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
-    final DateTime now = DateTime.now();
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: controller.text.isNotEmpty
-          ? DateTime.parse(controller.text)
-          : now,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-
-    if (picked != null) {
-      setState(() {
-        controller.text = picked.toString().substring(0, 10);
-      });
-    }
-  }
-
-  Future<void> _saveForm() async {
-    if (_formKey.currentState!.validate()) {
+  {% if has_relationships %}
+    Future<void> _loadReferenceData() async {
       setState(() {
         _isLoading = true;
       });
 
       try {
-        final {{ entity_name }}Entity entity;
+  {% for rel in relationships.direct %}
+        // Load {{ rel.to_module }} options
+        await _{{ rel.camel_name }}Controller.getAll();
+        _{{ rel.camel_name }}Options = _{{ rel.camel_name }}Controller.items;
 
-        if (widget.isEditing && widget.item != null) {
-          entity = widget.item!.copyWith(
-{% for field in fields %}
-{% if field.type == 'reference' %}
-            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
-                ? _{{ field.name }}Controller.text
-                : "",
-{% elif field.type == 'String' %}
-            {{ field.name }}: _{{ field.name }}Controller.text,
-{% elif field.type == 'int' %}
-            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
-                ? int.parse(_{{ field.name }}Controller.text)
-                : -1,
-{% elif field.type == 'double' %}
-            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
-                ? double.parse(_{{ field.name }}Controller.text)
-                : 0.0,
-{% elif field.type == 'bool' %}
-            {{ field.name }}: _{{ field.name }}Controller.text == 'true',
-{% elif field.type == 'DateTime?' %}
-            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
-                ? DateTime.parse(_{{ field.name }}Controller.text)
-                : null,
-{% elif field.type == 'DateTime' %}
-            {{ field.name }}: DateTime.parse(_{{ field.name }}Controller.text),
-{% else %}
-            {{ field.name }}: _{{ field.name }}Controller.text,
-{% endif %}
-{% endfor %}
+        // Set selected value if editing
+        if (widget.isEditing && widget.item?.{{ rel.field_name }} != null) {
+          _selected{{ rel.pascal_name }} = _{{ rel.camel_name }}Options.firstWhere(
+            (item) => item.id == widget.item!.{{ rel.field_name }}
           );
-
-          await _controller.update(entity);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('{{ entity_name }} updated successfully'),
-              ),
-            );
-          }
-        } else {
-          entity = {{ entity_name }}Entity(
-            id: '',  // Will be generated by the repository
-{% for field in fields %}
-{% if field.type == 'reference' %}
-            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
-                ? _{{ field.name }}Controller.text
-                : "",
-{% elif field.type == 'String' %}
-            {{ field.name }}: _{{ field.name }}Controller.text,
-{% elif field.type == 'int' %}
-            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
-                ? int.parse(_{{ field.name }}Controller.text)
-                : {% if field.default %}{{ field.default }}{% else %}-1{% endif %},
-{% elif field.type == 'double' %}
-            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
-                ? double.parse(_{{ field.name }}Controller.text)
-                : {% if field.default %}{{ field.default }}{% else %}0.0{% endif %},
-{% elif field.type == 'bool' %}
-            {{ field.name }}: _{{ field.name }}Controller.text == 'true',
-{% elif field.type == 'DateTime?' %}
-            {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
-                ? DateTime.parse(_{{ field.name }}Controller.text)
-                : null,
-{% elif field.type == 'DateTime' %}
-            {{ field.name }}: DateTime.parse(_{{ field.name }}Controller.text),
-{% else %}
-            {{ field.name }}: _{{ field.name }}Controller.text,
-{% endif %}
-{% endfor %}
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-
-          await _controller.create(entity);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('{{ entity_name }} created successfully'),
-              ),
-            );
-          }
+          _{{ rel.field_name }}Controller.text = _selected{{ rel.pascal_name }}?.id ?? '';
         }
-
-        if (mounted) {
-          Navigator.of(context).pop();
-        }
+  {% endfor %}
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error saving {{ entity_name }}: $e'),
+              content: Text('${AppLocalizations.of(context)!.errorSaving}: $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -479,5 +129,366 @@ class _{{ entity_name }}FormScreenState extends State<{{ entity_name }}FormScree
         }
       }
     }
+  {% endif %}
+
+    @override
+    void dispose() {
+  {% for field in fields %}
+      _{{ field.name }}Controller.dispose();
+  {% endfor %}
+      super.dispose();
+    }
+
+    @override
+    Widget build(BuildContext context) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.isEditing
+              ? AppLocalizations.of(context)!.edit('{{ entity_name }}')
+              : AppLocalizations.of(context)!.createdSuccess('{{ entity_name }}')),
+
+        ),
+        body: _isLoading
+            ? const LoadingIndicator()
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(Dimensions.paddingM),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildFormFields(),
+                      const SizedBox(height: Dimensions.marginL),
+                      _buildButtons(),
+                    ],
+                  ),
+                ),
+              ),
+      );
+    }
+
+    Widget _buildFormFields() {
+      return Column(
+        children: [
+  {% for field in fields %}
+  {% if field.type == 'reference' %}
+  {% elif field.type == 'String' %}
+          TextFormField(
+            controller: _{{ field.name }}Controller,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
+              hintText: AppLocalizations.of(context)!.{{ field.name }}Hint,
+            ),
+            validator: {% if field.required is defined and field.required %}(value) {
+              if (value == null || value.isEmpty) {
+                return '{{ field.name | capitalize }} is required';
+              }
+              return null;
+            }{% else %}null{% endif %},
+          ),
+  {% elif field.type == 'int' %}
+          TextFormField(
+            controller: _{{ field.name }}Controller,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
+              hintText: AppLocalizations.of(context)!.{{ field.name }}Hint,
+            ),
+            keyboardType: TextInputType.number,
+            validator: {% if field.required is defined and field.required %}(value) {
+              if (value == null || value.isEmpty) {
+                return '{{ field.name | capitalize }} is required';
+              }
+              try {
+                int.parse(value);
+              } catch (e) {
+                return 'return AppLocalizations.of(context)!.invalidNumber;
+';
+              }
+              return null;
+            }{% else %}(value) {
+              if (value != null && value.isNotEmpty) {
+                try {
+                  int.parse(value);
+                } catch (e) {
+                  return 'return AppLocalizations.of(context)!.invalidNumber;
+';
+                }
+              }
+              return null;
+            }{% endif %},
+          ),
+  {% elif field.type == 'double' %}
+          TextFormField(
+            controller: _{{ field.name }}Controller,
+            decoration: const InputDecoration(
+              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
+              hintText: AppLocalizations.of(context)!.{{ field.name }}Hint,
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            validator: {% if field.required is defined and field.required %}(value) {
+              if (value == null || value.isEmpty) {
+                return '{{ field.name | capitalize }} is required';
+              }
+              try {
+                double.parse(value);
+              } catch (e) {
+                return 'return AppLocalizations.of(context)!.invalidNumber;
+';
+              }
+              return null;
+            }{% else %}(value) {
+              if (value != null && value.isNotEmpty) {
+                try {
+                  double.parse(value);
+                } catch (e) {
+                  return 'return AppLocalizations.of(context)!.invalidNumber;
+';
+                }
+              }
+              return null;
+            }{% endif %},
+          ),
+  {% elif field.type == 'bool' %}
+          SwitchListTile(
+            title: const Text('{{ field.name | capitalize }}'),
+            value: _{{ field.name }}Controller.text == 'true',
+            onChanged: (bool value) {
+              setState(() {
+                _{{ field.name }}Controller.text = value ? 'true' : 'false';
+              });
+            },
+          ),
+  {% elif field.type == 'DateTime' or field.type == 'DateTime?' %}
+          TextFormField(
+            controller: _{{ field.name }}Controller,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
+              hintText: 'YYYY-MM-DD',
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.calendar_today),
+                onPressed: () => _selectDate(context, _{{ field.name }}Controller),
+              ),
+            ),
+            readOnly: true,
+            validator: {% if field.required is defined and field.required %}(value) {
+              if (value == null || value.isEmpty) {
+                return '{{ field.name | capitalize }} is required';
+              }
+              return null;
+            }{% else %}null{% endif %},
+          ),
+  {% else %}
+          TextFormField(
+            controller: _{{ field.name }}Controller,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
+              hintText: AppLocalizations.of(context)!.{{ field.name }}Hint,
+            ),
+            validator: {% if field.required is defined and field.required %}(value) {
+              if (value == null || value.isEmpty) {
+                return '{{ field.name | capitalize }} is required';
+              }
+              return null;
+            }{% else %}null{% endif %},
+          ),
+  {% endif %}
+          const SizedBox(height: Dimensions.marginM),
+  {% endfor %}
+  {%- if has_relationships and relationships.direct %}
+  {%- for rel in relationships.direct %}
+          // Reference field for {{ rel.field_name }}
+          DropdownButtonFormField<{{ rel.to_module }}Entity>(
+            value: _selected{{ rel.pascal_name }},
+            decoration: InputDecoration(
+              labelText: '{{ rel.field_name | capitalize }}',
+              hintText: AppLocalizations.of(context)!.selectEntity('{{ rel.to_module }}'),
+            ),
+            items: _{{ rel.camel_name }}Options.map((item) {
+              return DropdownMenuItem<{{ rel.to_module }}Entity>(
+                value: item,
+                child: Text(_getDisplayText{{ rel.pascal_name }}(item)),
+              );
+            }).toList(),
+            onChanged: ({{ rel.to_module }}Entity? value) {
+              setState(() {
+                _selected{{ rel.pascal_name }} = value;
+                _{{ rel.field_name }}Controller.text = value?.id ?? '';
+              });
+            },
+            validator: {% if rel.required is defined and rel.required %}(value) {
+              if (value == null) {
+                return '{{ rel.field_name | capitalize }} is required';
+              }
+              return null;
+            }{% else %}null{% endif %},
+          ),
+  {%- endfor %}
+  {%- endif %}
+        ],
+      );
+    }
+
+  {% if has_relationships %}
+    // Helper methods to get display text for dropdowns
+  {% for rel in relationships.direct %}
+    String _getDisplayText{{ rel.pascal_name }}({{ rel.to_module }}Entity item) {
+      // Try to find a suitable display field
+      if (item.title != null && item.title!.isNotEmpty) return item.title!;
+      return item.id; // Fallback to ID
+    }
+  {% endfor %}
+  {% endif %}
+
+    Widget _buildButtons() {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text(AppLocalizations.of(context)!.btnCancel),
+          ),
+          SizedBox(width: Dimensions.marginM),
+          ElevatedButton(
+            onPressed: _saveForm,
+              child: Text(widget.isEditing
+                ? AppLocalizations.of(context)!.update
+                : AppLocalizations.of(context)!.createdSuccess('{{ entity_name }}')),
+          ),
+        ],
+      );
+    }
+
+    Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+      final DateTime now = DateTime.now();
+      final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: controller.text.isNotEmpty
+            ? DateTime.parse(controller.text)
+            : now,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2101),
+      );
+
+      if (picked != null) {
+        setState(() {
+          controller.text = picked.toString().substring(0, 10);
+        });
+      }
+    }
+
+    Future<void> _saveForm() async {
+      if (_formKey.currentState!.validate()) {
+        setState(() {
+          _isLoading = true;
+        });
+
+        try {
+          final {{ entity_name }}Entity entity;
+
+          if (widget.isEditing && widget.item != null) {
+            entity = widget.item!.copyWith(
+  {% for field in fields %}
+  {% if field.type == 'reference' %}
+              {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                  ? _{{ field.name }}Controller.text
+                  : "",
+  {% elif field.type == 'String' %}
+              {{ field.name }}: _{{ field.name }}Controller.text,
+  {% elif field.type == 'int' %}
+              {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                  ? int.parse(_{{ field.name }}Controller.text)
+                  : -1,
+  {% elif field.type == 'double' %}
+              {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                  ? double.parse(_{{ field.name }}Controller.text)
+                  : 0.0,
+  {% elif field.type == 'bool' %}
+              {{ field.name }}: _{{ field.name }}Controller.text == 'true',
+  {% elif field.type == 'DateTime?' %}
+              {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                  ? DateTime.parse(_{{ field.name }}Controller.text)
+                  : null,
+  {% elif field.type == 'DateTime' %}
+              {{ field.name }}: DateTime.parse(_{{ field.name }}Controller.text),
+  {% else %}
+              {{ field.name }}: _{{ field.name }}Controller.text,
+  {% endif %}
+  {% endfor %}
+            );
+
+            await _controller.update(entity);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(AppLocalizations.of(context)!.updatedSuccess("{{ entity_name }}")),
+                ),
+              );
+            }
+          } else {
+            entity = {{ entity_name }}Entity(
+              id: '',  // Will be generated by the repository
+  {% for field in fields %}
+  {% if field.type == 'reference' %}
+              {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                  ? _{{ field.name }}Controller.text
+                  : "",
+  {% elif field.type == 'String' %}
+              {{ field.name }}: _{{ field.name }}Controller.text,
+  {% elif field.type == 'int' %}
+              {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                  ? int.parse(_{{ field.name }}Controller.text)
+                  : {% if field.default %}{{ field.default }}{% else %}-1{% endif %},
+  {% elif field.type == 'double' %}
+              {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                  ? double.parse(_{{ field.name }}Controller.text)
+                  : {% if field.default %}{{ field.default }}{% else %}0.0{% endif %},
+  {% elif field.type == 'bool' %}
+              {{ field.name }}: _{{ field.name }}Controller.text == 'true',
+  {% elif field.type == 'DateTime?' %}
+              {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
+                  ? DateTime.parse(_{{ field.name }}Controller.text)
+                  : null,
+  {% elif field.type == 'DateTime' %}
+              {{ field.name }}: DateTime.parse(_{{ field.name }}Controller.text),
+  {% else %}
+              {{ field.name }}: _{{ field.name }}Controller.text,
+  {% endif %}
+  {% endfor %}
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+
+            await _controller.create(entity);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(AppLocalizations.of(context)!.updatedSuccess("{{ entity_name }}")),
+                ),
+              );
+            }
+          }
+
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${AppLocalizations.of(context)!.errorSaving} {{ entity_name }}: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
+      }
+    }
   }
-}

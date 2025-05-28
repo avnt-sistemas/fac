@@ -69,7 +69,7 @@ class AppGenerator:
         app_name = self.config['app']['name']
         package_name = self.config['app']['package']
 
-        print(f"🚀 Generating Flutter app: {app_name}")
+        print(f"Generating Flutter app with name: {app_name}")
 
         # Create Flutter project using CLI
         safe_name = self.case_converter.to_snake_case(app_name)
@@ -83,7 +83,7 @@ class AppGenerator:
                 print(f"Using fallback name '{safe_name}' as the converted name is still invalid")
 
         app_dir = os.path.join(self.output_dir, safe_name)
-        print(f"📁 App directory: {app_dir}")
+        print(f"App directory will be: {app_dir}")
 
         # Create base Flutter project
         print("📱 Creating base Flutter project...")
@@ -319,7 +319,8 @@ class AppGenerator:
             'test/domain',
             'test/features',
             'integration_test',
-            'assets/db'
+            'assets/db',  # Para armazenar migrações SQL
+            'lib/l10n', # Para arquivos de tradução
         ]
 
         for dir_path in dirs:
@@ -334,6 +335,15 @@ class AppGenerator:
 
         # Generate core error handlers
         self._generate_error_handlers(app_dir)
+
+        # Generate localizations
+        if self.config.get('translations', {}).get('enabled', True):
+            print("Generating localizations...")
+            self._generate_localizations(app_dir)
+
+        # Generate flutter commands
+        self.app_dir = app_dir
+        self._run_flutter_commands()
 
     def _generate_app_files(self, app_dir):
         """Generate the base application files"""
@@ -527,7 +537,22 @@ class AppGenerator:
 
             # Le o pubspec atual (que já tem as dependências instaladas)
             with open(pubspec_path, 'r') as f:
-                current_pubspec = f.read()
+                pubspec_content = f.read()
+
+            # Prepare dependencies list
+            dependencies = [
+                "provider: ^6.0.5",  # State management
+                "get_it: ^7.6.0",  # Dependency injection
+                "dio: ^5.3.2",  # HTTP client
+                "equatable: ^2.0.5",  # Value equality
+                "shared_preferences: ^2.2.0",  # Local storage
+                "intl: ^0.19.0",  # Internationalization
+                "sqflite: ^2.2.8+4",  # Local database - always needed now
+                "path: ^1.8.3",  # Path utilities - needed for database
+                "uuid: ^4.1.0",  # Generate UUIDs for SQLite
+                "path_provider: ^2.1.1",  # Access to file system directories
+                "flutter_localizations:\n    sdk: flutter",  # CORRETO
+            ]
 
             # Aplica o template apenas para as seções que não são dependências
             template = self.jinja_env.get_template('pubspec.yaml.jinja')
@@ -603,3 +628,39 @@ class AppGenerator:
             print("❌ Some dependencies are missing. Run the install command to fix.")
 
         return all_good
+            print(f"Error updating pubspec.yaml: {e}")
+            print("You may need to manually add the required dependencies.")
+
+    def _generate_localizations(self, app_dir):
+        """Generate .arb translation files"""
+        try:
+            l10n_dir = os.path.join(app_dir, 'lib', 'l10n')
+            os.makedirs(l10n_dir, exist_ok=True)
+
+            # Render en
+            template = self.jinja_env.get_template('l10n/app_en.arb.jinja')
+            output = template.render(app_name=self.config['app']['name'])
+            with open(os.path.join(l10n_dir, 'app_en.arb'), 'w', encoding='utf-8') as f:
+                f.write(output)
+
+            # Render pt
+            template = self.jinja_env.get_template('l10n/app_pt.arb.jinja')
+            output = template.render(app_name=self.config['app']['name'])
+            with open(os.path.join(l10n_dir, 'app_pt.arb'), 'w', encoding='utf-8') as f:
+                f.write(output)
+
+        except Exception as e:
+            print(f"Erro ao gerar arquivos de tradução: {e}")
+
+    def _run_flutter_commands(self):
+        """Run flutter commands inside the generated Flutter app directory"""
+        try:
+            print("Running `flutter pub get` in", self.app_dir)
+            subprocess.run(["flutter", "pub", "get"], cwd=self.app_dir, check=True)
+
+            print("Running `flutter gen-l10n`...")
+            subprocess.run(["flutter", "gen-l10n"], cwd=self.app_dir, check=True)
+
+            print("Flutter commands completed successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error running Flutter commands: {e}")

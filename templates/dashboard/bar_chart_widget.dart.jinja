@@ -7,10 +7,10 @@ class BarChartWidget extends StatefulWidget {
   final String groupBy;
 
   const BarChartWidget({
-    Key? key,
+    super.key,
     required this.dataSource,
     required this.groupBy,
-  }) : super(key: key);
+  }) ;
 
   @override
   State<BarChartWidget> createState() => _BarChartWidgetState();

@@ -10,7 +10,7 @@ class ConfirmationDialog extends StatelessWidget {
   final IconData? icon;
 
   const ConfirmationDialog({
-    Key? key,
+    super.key,
     required this.title,
     required this.message,
     this.confirmLabel = 'Confirm',
@@ -18,7 +18,7 @@ class ConfirmationDialog extends StatelessWidget {
     required this.onConfirm,
     this.confirmColor = Colors.red,
     this.icon,
-  }) : super(key: key);
+  }) ;
 
   static Future<bool> show({
     required BuildContext context,

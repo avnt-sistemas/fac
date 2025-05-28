@@ -100,7 +100,7 @@ class ExportService {
         for (var colIndex = 0; colIndex < columns.length; colIndex++) {
           final value = _formatValueForExport(row[columns[colIndex]]);
           sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex, rowIndex: rowIndex + 1))
-            ..value = value;
+            .value = value;
         }
       }
 
