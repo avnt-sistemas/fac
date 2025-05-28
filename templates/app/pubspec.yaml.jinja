@@ -6,68 +6,34 @@ version: 1.0.0+1
 environment:
   sdk: ">=3.0.0 <4.0.0"
 
-dependencies:
-  flutter:
-    sdk: flutter
-  cupertino_icons: ^1.0.5
-  # Estado e injeção de dependências
-  provider: ^6.0.5
-  get_it: ^7.6.0
-  # Formatação e localização
-  intl: ^0.18.1
-  # HTTP e Cache
-  dio: ^5.3.2
-  shared_preferences: ^2.2.0
-  # Para UI aprimorada
-  flutter_svg: ^2.0.7
-  google_fonts: ^5.1.0
-  # Utilidades
-  equatable: ^2.0.5
-  dartz: ^0.10.1
-
-  {% if sqlite_enabled %}
-  # Para SQLite
-  sqflite: ^2.3.0
-  path: ^1.8.3
-  {% endif %}
-
-  {% if firebase_enabled %}
-  # Firebase
-  firebase_core: ^2.15.1
-  cloud_firestore: ^4.9.1
-  firebase_storage: ^11.2.6
-  {% endif %}
-
-  {% if auth_enabled %}
-  # Autenticação
-  flutter_secure_storage: ^8.0.0
-  {% if firebase_enabled %}
-  firebase_auth: ^4.9.0
-  google_sign_in: ^6.1.5
-  {% endif %}
-  {% endif %}
-
-  # Exportação
-  pdf: ^3.10.4
-  excel: ^2.1.0
-  csv: ^5.0.2
-  open_file: ^3.3.2
-
-  # Para gráficos (se o dashboard estiver habilitado)
-  fl_chart: ^0.63.0
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  integration_test:
-    sdk: flutter
-  flutter_lints: ^2.0.3
-  mockito: ^5.4.2
-  bloc_test: ^9.1.4
-  build_runner: ^2.4.6
+{# ==================================================================== #}
+{# :::                           ATENÇÃO!                           ::: #}
+{# ==================================================================== #}
+{#                                                                      #}
+{# As dependências são gerenciadas automaticamente pelo flutter pub add #}
+{#                                                                      #}
+{#              Não adicione dependências manualmente aqui              #}
+{#                                                                      #}
+{# ____________________________________________________________________ #}
+{# Para adicionar novas dependencias, use o DependencyManager!          #}
+{# Caminho para o arquivo...............: ./utils/dependency_manager.py #}
+{# ==================================================================== #}
 
 flutter:
   uses-material-design: true
+
+  # Assets do projeto
   assets:
     - assets/images/
     - assets/icons/
+    {% if sqlite_enabled %}
+    - assets/db/
+    {% endif %}
+
+  # Fontes customizadas (se necessário)
+  # fonts:
+  #   - family: CustomFont
+  #     fonts:
+  #       - asset: assets/fonts/CustomFont-Regular.ttf
+  #       - asset: assets/fonts/CustomFont-Bold.ttf
+  #         weight: 700

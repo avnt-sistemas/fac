@@ -7,12 +7,13 @@ from jinja2 import Environment, FileSystemLoader
 from utils.case_converter import CaseConverter
 from utils.file_manager import FileManager
 from utils.flutter_cli import FlutterCLI
+from utils.dependency_manager import DependencyManager
 from generators.theme_generator import ThemeGenerator
 from generators.auth_generator import AuthGenerator
 from generators.model_generator import ModelGenerator
 from generators.firebase_generator import FirebaseGenerator
 from generators.dashboard_generator import DashboardGenerator
-from generators.sqlite_generator import SQLiteGenerator  # Novo gerador para SQLite
+from generators.sqlite_generator import SQLiteGenerator
 
 
 class AppGenerator:
@@ -31,6 +32,9 @@ class AppGenerator:
             print("You need to have Flutter installed and available in your PATH to use this tool.")
             print("You can download Flutter from https://flutter.dev/docs/get-started/install")
             raise
+
+        # Initialize Dependency Manager
+        self.dependency_manager = DependencyManager(self.flutter_cli, self.config)
 
         # Set up Jinja2 environment
         template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
@@ -65,7 +69,7 @@ class AppGenerator:
         app_name = self.config['app']['name']
         package_name = self.config['app']['package']
 
-        print(f"Generating Flutter app with name: {app_name}")
+        print(f"🚀 Generating Flutter app: {app_name}")
 
         # Create Flutter project using CLI
         safe_name = self.case_converter.to_snake_case(app_name)
@@ -79,110 +83,219 @@ class AppGenerator:
                 print(f"Using fallback name '{safe_name}' as the converted name is still invalid")
 
         app_dir = os.path.join(self.output_dir, safe_name)
-        print(f"App directory will be: {app_dir}")
+        print(f"📁 App directory: {app_dir}")
 
         # Create base Flutter project
-        print("Creating base Flutter project...")
+        print("📱 Creating base Flutter project...")
         try:
             self.flutter_cli.create_project(
                 name=safe_name,
                 org=package_name,
                 output_dir=self.output_dir
             )
-            print("Base Flutter project created successfully.")
+            print("✅ Base Flutter project created successfully.")
         except subprocess.CalledProcessError as e:
-            print(f"Error: Failed to create Flutter project. Details: {e}")
+            print(f"❌ Failed to create Flutter project. Details: {e}")
             print("Make sure you have Flutter installed and that the name and organization are valid.")
             raise
 
+        # Install dependencies FIRST using the new dependency manager
+        print("📦 Installing dependencies...")
+        try:
+            self.dependency_manager.install_dependencies(app_dir)
+            print("✅ Dependencies installed successfully.")
+        except Exception as e:
+            print(f"⚠️ Warning: Error installing dependencies: {e}")
+            print("You may need to run 'flutter pub get' manually later.")
+
         # Generate project structure
-        print("Generating project structure...")
+        print("🏗️ Generating project structure...")
         try:
             self._generate_project_structure(app_dir)
-            print("Project structure generated successfully.")
+            print("✅ Project structure generated successfully.")
         except Exception as e:
-            print(f"Error generating project structure: {e}")
+            print(f"❌ Error generating project structure: {e}")
             raise
+
+        # Update pubspec.yaml with custom template (for metadata and assets)
+        print("📝 Updating pubspec.yaml with template...")
+        try:
+            self._update_pubspec_template(app_dir)
+            print("✅ pubspec.yaml updated successfully.")
+        except Exception as e:
+            print(f"❌ Error updating pubspec.yaml: {e}")
 
         # Generate theme
         if 'theme' in self.config:
-            print("Generating theme...")
+            print("🎨 Generating theme...")
             try:
                 theme_generator = ThemeGenerator(app_dir, self.config)
                 theme_generator.generate()
-                print("Theme generated successfully.")
+                print("✅ Theme generated successfully.")
             except Exception as e:
-                print(f"Error generating theme: {e}")
+                print(f"❌ Error generating theme: {e}")
+
+        # Setup Firebase BEFORE authentication if Firebase is used
+        firebase_used = (
+                self.config.get('auth', {}).get('provider') == 'firebase' or
+                self.config.get('persistence', {}).get('provider') == 'firebase'
+        )
+
+        if firebase_used:
+            print("🔥 Setting up Firebase...")
+            try:
+                firebase_generator = FirebaseGenerator(app_dir, self.config, self.dependency_manager)
+                firebase_generator.setup_firebase()
+                print("✅ Firebase setup completed.")
+
+                # Show Firebase configuration info
+                firebase_info = firebase_generator.get_firebase_config_info()
+                print(f"📋 Firebase Info:")
+                print(f"  Project ID: {firebase_info['project_id']}")
+                print(f"  Platforms: {', '.join(firebase_info['configured_platforms'])}")
+                print(f"  firebase_options.dart: {'✅' if firebase_info['firebase_options_exists'] else '❌'}")
+
+            except Exception as e:
+                print(f"❌ Error setting up Firebase: {e}")
+                print("⚠️ You may need to configure Firebase manually later.")
 
         # Generate authentication if enabled
         if self.config.get('auth', {}).get('enabled', False):
-            print("Generating authentication...")
+            print("🔐 Generating authentication...")
             try:
                 auth_generator = AuthGenerator(app_dir, self.config)
                 auth_generator.generate()
-                print("Authentication generated successfully.")
-
-                # If Firebase auth is selected, set up Firebase
-                if self.config.get('auth', {}).get('provider') == 'firebase':
-                    print("Setting up Firebase...")
-                    firebase_generator = FirebaseGenerator(app_dir)
-                    firebase_generator.setup_firebase()
-                    print("Firebase setup completed.")
+                print("✅ Authentication generated successfully.")
             except Exception as e:
-                print(f"Error generating authentication: {e}")
+                print(f"❌ Error generating authentication: {e}")
 
         # Configure persistence (SQLite or Firebase)
         persistence_provider = self.config.get('persistence', {}).get('provider', 'sqlite')
 
         # Generate SQLite infrastructure if SQLite is the provider
         if persistence_provider == 'sqlite':
-            print("Setting up SQLite persistence...")
+            print("🗃️ Setting up SQLite persistence...")
             try:
                 sqlite_generator = SQLiteGenerator(app_dir, self.config)
                 sqlite_generator.generate()
-                print("SQLite persistence setup completed.")
+                print("✅ SQLite persistence setup completed.")
             except Exception as e:
-                print(f"Error setting up SQLite persistence: {e}")
+                print(f"❌ Error setting up SQLite persistence: {e}")
 
         # Generate modules
         if 'modules' in self.config:
-            print("Generating modules...")
+            print("🧩 Generating modules...")
             try:
-                model_generator = ModelGenerator(app_dir, self.config)  # Passou o config aqui
+                model_generator = ModelGenerator(app_dir, self.config)
                 for module_config in self.config['modules']:
-                    print(f"Generating module: {module_config.get('name', 'Unknown')}")
+                    module_name = module_config.get('name', 'Unknown')
+                    print(f"  📄 Generating module: {module_name}")
                     model_generator.generate_module(module_config)
-                print("Modules generated successfully.")
+                print("✅ Modules generated successfully.")
             except Exception as e:
-                print(f"Error generating modules: {e}")
+                print(f"❌ Error generating modules: {e}")
 
         # Generate dashboard if enabled
         if self.config.get('dashboard', {}).get('enabled', False):
-            print("Generating dashboard...")
+            print("📊 Generating dashboard...")
             try:
                 dashboard_generator = DashboardGenerator(app_dir, self.config)
                 dashboard_generator.generate()
-                print("Dashboard generated successfully.")
+                print("✅ Dashboard generated successfully.")
             except Exception as e:
-                print(f"Error generating dashboard: {e}")
+                print(f"❌ Error generating dashboard: {e}")
 
-        # Update pubspec.yaml with required dependencies
-        print("Updating pubspec.yaml...")
+        # Final pub get to ensure everything is working
+        print("🔄 Running final 'flutter pub get'...")
         try:
-            self._update_pubspec(app_dir)
-            print("pubspec.yaml updated successfully.")
-        except Exception as e:
-            print(f"Error updating pubspec.yaml: {e}")
-
-        # Run flutter pub get to install dependencies
-        print("Running 'flutter pub get'...")
-        try:
-            self.flutter_cli.run_pub_get(app_dir)
-            print("Dependencies installed successfully.")
+            self.flutter_cli.pub_get(app_dir)
+            print("✅ Final dependencies check completed.")
         except subprocess.CalledProcessError as e:
-            print(f"Warning: Failed to run 'flutter pub get'. You may need to run it manually. Details: {e}")
+            print(f"⚠️ Warning: Failed to run final 'flutter pub get'. Details: {e}")
 
-        print(f"✅ Flutter application '{app_name}' created successfully at {app_dir}")
+        print(f"\n🎉 Flutter application '{app_name}' created successfully!")
+        print(f"📁 Location: {app_dir}")
+
+        # Show dependency verification
+        self._show_final_status(app_dir)
+
+    def _show_final_status(self, app_dir: str):
+        """Show final status of the generated application"""
+        print(f"\n📋 Final Status Report:")
+
+        # Check key files
+        key_files = {
+            'pubspec.yaml': 'Project configuration',
+            'lib/main.dart': 'Main application file',
+            'lib/app/app.dart': 'App widget',
+            'lib/app/routes.dart': 'Route configuration',
+        }
+
+        # Add Firebase-specific files if Firebase is used
+        if (self.config.get('auth', {}).get('provider') == 'firebase' or
+                self.config.get('persistence', {}).get('provider') == 'firebase'):
+            key_files['lib/firebase_options.dart'] = 'Firebase configuration'
+
+        print("\n📄 Key Files:")
+        for file_path, description in key_files.items():
+            full_path = os.path.join(app_dir, file_path)
+            status = "✅" if os.path.exists(full_path) else "❌"
+            print(f"  {status} {file_path} - {description}")
+
+        # Show dependency status
+        print("\n📦 Dependencies:")
+        try:
+            verification = self.dependency_manager.verify_dependencies(app_dir)
+            missing_deps = [dep for dep, installed in verification.items() if not installed]
+
+            if not missing_deps:
+                print("  ✅ All required dependencies are installed")
+            else:
+                print(f"  ❌ Missing dependencies: {', '.join(missing_deps)}")
+        except Exception as e:
+            print(f"  ⚠️ Could not verify dependencies: {e}")
+
+        # Show next steps
+        self._show_next_steps(app_dir)
+
+    def _show_next_steps(self, app_dir: str):
+        """Show next steps for the user"""
+        app_name = os.path.basename(app_dir)
+
+        print(f"\n🚀 Next Steps:")
+        print(f"  1. cd {app_dir}")
+        print(f"  2. flutter run")
+
+        # Firebase-specific next steps
+        if (self.config.get('auth', {}).get('provider') == 'firebase' or
+                self.config.get('persistence', {}).get('provider') == 'firebase'):
+            print(f"\n🔥 Firebase Setup:")
+            print(f"  • If firebase_options.dart contains placeholders, run:")
+            print(f"    flutterfire configure --project={self._get_firebase_app_id()}")
+            print(f"  • Configure your Firebase project at: https://console.firebase.google.com")
+
+        # Module-specific next steps
+        if self.config.get('modules'):
+            print(f"\n🧩 Generated Modules:")
+            for module in self.config.get('modules', []):
+                module_name = module.get('name', 'Unknown')
+                print(f"  • {module_name} - CRUD operations ready")
+
+        print(f"\n📚 Documentation:")
+        print(f"  • Check generated README.md for detailed information")
+        print(f"  • Review lib/app/routes.dart for available routes")
+
+    def _get_firebase_app_id(self) -> str:
+        """Get Firebase app ID from config or derive from package name"""
+        if 'firebase_app' in self.config.get('app', {}):
+            return self.config['app']['firebase_app']
+
+        package_name = self.config.get('app', {}).get('package', '')
+        if '.' in package_name:
+            return package_name.split('.')[-1]
+
+        app_name = self.config.get('app', {}).get('name', 'flutter-app')
+        return re.sub(r'[^a-z0-9-]', '-', app_name.lower())
 
     def _generate_project_structure(self, app_dir):
         """Generate the base project structure"""
@@ -193,7 +306,7 @@ class AppGenerator:
             'lib/core/errors',
             'lib/core/services',
             'lib/core/widgets',
-            'lib/core/data/datasources',  # Nova pasta para persistência SQLite
+            'lib/core/data/datasources',
             'lib/data/datasources',
             'lib/data/models',
             'lib/data/repositories',
@@ -206,7 +319,7 @@ class AppGenerator:
             'test/domain',
             'test/features',
             'integration_test',
-            'assets/db'  # Para armazenar migrações SQL
+            'assets/db'
         ]
 
         for dir_path in dirs:
@@ -230,7 +343,7 @@ class AppGenerator:
                 'app/main.dart.jinja',
                 'app/app.dart.jinja',
                 'app/routes.dart.jinja',
-                'app/dependency_injection.dart.jinja'  # Adicionado para SQLite
+                'app/dependency_injection.dart.jinja'
             ]
 
             # Verificar os templates usando tratamento de exceções
@@ -239,8 +352,7 @@ class AppGenerator:
                     # Tenta obter o template - se não existir, lançará uma exceção
                     self.jinja_env.get_template(template_path)
                 except Exception as e:
-                    print(f"AVISO: O template '{template_path}' não existe ou não pode ser carregado!")
-                    print(f"Erro: {e}")
+                    print(f"⚠️ Template '{template_path}' não encontrado: {e}")
 
             # Generate main.dart
             try:
@@ -250,7 +362,11 @@ class AppGenerator:
                     has_auth=self.config.get('auth', {}).get('enabled', False),
                     auth_provider=self.config.get('auth', {}).get('provider', 'firebase'),
                     persistence_provider=self.config.get('persistence', {}).get('provider', 'sqlite'),
-                    modules=self.config.get('modules', [])
+                    modules=self.config.get('modules', []),
+                    firebase_enabled=(
+                            self.config.get('auth', {}).get('provider') == 'firebase' or
+                            self.config.get('persistence', {}).get('provider') == 'firebase'
+                    )
                 )
 
                 main_dart_path = os.path.join(app_dir, 'lib', 'main.dart')
@@ -258,7 +374,7 @@ class AppGenerator:
                 with open(main_dart_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(output)
             except Exception as e:
-                print(f"Erro ao gerar main.dart: {e}")
+                print(f"❌ Erro ao gerar main.dart: {e}")
 
             modules = self.config.get('modules', [])
             c = CaseConverter()
@@ -276,7 +392,11 @@ class AppGenerator:
                     app_name=self.config['app']['name'],
                     has_auth=self.config.get('auth', {}).get('enabled', False),
                     persistence_provider=self.config.get('persistence', {}).get('provider', 'sqlite'),
-                    modules=modules
+                    modules=modules,
+                    firebase_enabled=(
+                            self.config.get('auth', {}).get('provider') == 'firebase' or
+                            self.config.get('persistence', {}).get('provider') == 'firebase'
+                    )
                 )
 
                 app_dart_path = os.path.join(app_dir, 'lib', 'app', 'app.dart')
@@ -284,7 +404,7 @@ class AppGenerator:
                 with open(app_dart_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(output)
             except Exception as e:
-                print(f"Erro ao gerar app.dart: {e}")
+                print(f"❌ Erro ao gerar app.dart: {e}")
 
             # Processar relacionamentos reversos com nomes únicos
             modules = []
@@ -292,7 +412,6 @@ class AppGenerator:
                 mc = m.copy()
                 mc['snake_name'] = self.case_converter.to_snake_case(m['name'])
                 modules.append(mc)
-
 
             # Generate routes.dart
             try:
@@ -308,7 +427,7 @@ class AppGenerator:
                 with open(routes_dart_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(output)
             except Exception as e:
-                print(f"Erro ao gerar routes.dart: {e}")
+                print(f"❌ Erro ao gerar routes.dart: {e}")
 
             # Generate dependency_injection.dart if SQLite is enabled
             if self.config.get('persistence', {}).get('provider') == 'sqlite':
@@ -324,10 +443,10 @@ class AppGenerator:
                     with open(di_path, 'w', encoding='utf-8', newline='\n') as f:
                         f.write(output)
                 except Exception as e:
-                    print(f"Erro ao gerar dependency_injection.dart: {e}")
+                    print(f"❌ Erro ao gerar dependency_injection.dart: {e}")
 
         except Exception as e:
-            print(f"Erro ao gerar arquivos do app: {e}")
+            print(f"❌ Erro ao gerar arquivos do app: {e}")
             raise
 
     def _generate_core_widgets(self, app_dir):
@@ -370,7 +489,7 @@ class AppGenerator:
                 f.write(output)
 
         except Exception as e:
-            print(f"Error generating core widgets: {e}")
+            print(f"❌ Error generating core widgets: {e}")
             raise
 
     def _generate_error_handlers(self, app_dir):
@@ -395,87 +514,92 @@ class AppGenerator:
                 f.write(output)
 
         except Exception as e:
-            print(f"Error generating error handlers: {e}")
+            print(f"❌ Error generating error handlers: {e}")
             raise
 
-    def _update_pubspec(self, app_dir):
-        """Update pubspec.yaml with required dependencies"""
+    def _update_pubspec_template(self, app_dir):
+        """
+        Atualiza o pubspec.yaml usando o template Jinja2 para metadados e assets.
+        As dependências já foram instaladas pelo DependencyManager.
+        """
         try:
             pubspec_path = os.path.join(app_dir, 'pubspec.yaml')
 
-            # Read existing pubspec
+            # Le o pubspec atual (que já tem as dependências instaladas)
             with open(pubspec_path, 'r') as f:
-                pubspec_content = f.read()
+                current_pubspec = f.read()
 
-            # Prepare dependencies list
-            dependencies = [
-                "provider: ^6.0.5",  # State management
-                "get_it: ^7.6.0",  # Dependency injection
-                "dio: ^5.3.2",  # HTTP client
-                "equatable: ^2.0.5",  # Value equality
-                "shared_preferences: ^2.2.0",  # Local storage
-                "intl: ^0.18.1",  # Internationalization
-                "sqflite: ^2.2.8+4",  # Local database - always needed now
-                "path: ^1.8.3",  # Path utilities - needed for database
-                "uuid: ^4.1.0",  # Generate UUIDs for SQLite
-                "path_provider: ^2.1.1",  # Access to file system directories
-            ]
+            # Aplica o template apenas para as seções que não são dependências
+            template = self.jinja_env.get_template('pubspec.yaml.jinja')
+            template_content = template.render(
+                app_name=self.config['app']['name'],
+                app_description=self.config['app'].get('description', 'A new Flutter project'),
+                sqlite_enabled=self.config.get('persistence', {}).get('provider') == 'sqlite',
+                firebase_enabled=(
+                        self.config.get('auth', {}).get('provider') == 'firebase' or
+                        self.config.get('persistence', {}).get('provider') == 'firebase'
+                ),
+                auth_enabled=self.config.get('auth', {}).get('enabled', False)
+            )
 
-            # Add Firebase dependencies if using Firebase
-            if (self.config.get('auth', {}).get('provider') == 'firebase' or
-                    self.config.get('persistence', {}).get('provider') == 'firebase'):
-                dependencies.extend([
-                    "firebase_core: ^2.9.0",
-                    "firebase_auth: ^4.4.0",
-                    "cloud_firestore: ^4.5.0",
-                ])
+            # Extrai apenas as seções flutter: e assets do template
+            # e preserva as dependências que já foram instaladas
+            lines = current_pubspec.split('\n')
+            template_lines = template_content.split('\n')
 
-            # Add chart dependencies if dashboard is enabled
-            if self.config.get('dashboard', {}).get('enabled', False):
-                dependencies.append("fl_chart: ^0.63.0")
-
-            # Add dependencies for exporting data if any module has exports enabled
-            for module in self.config.get('modules', []):
-                if module.get('export', {}).get('csv', False):
-                    dependencies.append("csv: ^5.0.2")
+            # Encontra onde começam as seções flutter
+            flutter_section_start = -1
+            for i, line in enumerate(lines):
+                if line.strip().startswith('flutter:'):
+                    flutter_section_start = i
                     break
 
-            for module in self.config.get('modules', []):
-                if module.get('export', {}).get('pdf', False):
-                    dependencies.append("pdf: ^3.10.4")
-                    break
+            if flutter_section_start != -1:
+                # Substitui a seção flutter com a do template
+                new_lines = lines[:flutter_section_start]
 
-            for module in self.config.get('modules', []):
-                if module.get('export', {}).get('xlsx', False):
-                    dependencies.append("excel: ^2.1.0")
-                    break
+                # Adiciona a seção flutter do template
+                template_flutter_started = False
+                for line in template_lines:
+                    if line.strip().startswith('flutter:'):
+                        template_flutter_started = True
+                    if template_flutter_started:
+                        new_lines.append(line)
 
-            # Add share_plus if any export option is enabled
-            if any(module.get('export', {}).get(fmt, False)
-                   for module in self.config.get('modules', [])
-                   for fmt in ['csv', 'pdf', 'xlsx']):
-                dependencies.append("share_plus: ^7.1.0")  # Para compartilhar arquivos exportados
-
-            # Check if dependencies section exists
-            if 'dependencies:' in pubspec_content:
-                # Find dependencies section and add new dependencies
-                dependencies_section = pubspec_content.split('dependencies:')[1].split('\n\n')[0]
-
-                # Add missing dependencies
-                for dependency in dependencies:
-                    package_name = dependency.split(':')[0].strip()
-                    if package_name not in dependencies_section:
-                        # Find the position to insert the new dependency
-                        dependencies_end = pubspec_content.find('dependencies:') + len('dependencies:')
-
-                        # Insert the new dependency
-                        pubspec_content = pubspec_content[:dependencies_end] + f'\n  {dependency}' + pubspec_content[
-                                                                                                     dependencies_end:]
-
-            # Write updated pubspec
-            with open(pubspec_path, 'w', encoding='utf-8', newline='\n') as f:
-                f.write(pubspec_content)
+                # Escreve o pubspec atualizado
+                with open(pubspec_path, 'w', encoding='utf-8', newline='\n') as f:
+                    f.write('\n'.join(new_lines))
 
         except Exception as e:
-            print(f"Error updating pubspec.yaml: {e}")
-            print("You may need to manually add the required dependencies.")
+            print(f"❌ Error updating pubspec template: {e}")
+
+    # Método para atualizar dependências posteriormente
+    def update_dependencies(self, app_dir: str):
+        """Atualiza todas as dependências para as versões mais recentes."""
+        print("🔄 Updating dependencies to latest versions...")
+        try:
+            self.dependency_manager.update_all_dependencies(app_dir)
+            print("✅ Dependencies updated successfully")
+        except Exception as e:
+            print(f"❌ Error updating dependencies: {e}")
+
+    # Método para verificar status das dependências
+    def check_dependencies(self, app_dir: str):
+        """Verifica o status das dependências do projeto."""
+        print("🔍 Checking dependency status...")
+        verification = self.dependency_manager.verify_dependencies(app_dir)
+
+        print("\n📋 Dependency Status:")
+        all_good = True
+        for dep, installed in verification.items():
+            status = "✅" if installed else "❌"
+            if not installed:
+                all_good = False
+            print(f"  {status} {dep}")
+
+        if all_good:
+            print("✅ All required dependencies are installed!")
+        else:
+            print("❌ Some dependencies are missing. Run the install command to fix.")
+
+        return all_good

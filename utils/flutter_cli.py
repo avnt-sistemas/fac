@@ -3,6 +3,7 @@ import re
 import subprocess
 import platform
 import shutil
+from typing import List, Dict, Optional
 
 
 class FlutterCLI:
@@ -120,18 +121,72 @@ class FlutterCLI:
                 "Flutter executable when initializing FlutterCLI."
             )
 
-    def run_pub_get(self, project_dir):
+    def pub_add(self, project_dir: str, packages: List[str], dev: bool = False):
+        """
+        Add packages using 'flutter pub add'.
+
+        Args:
+            project_dir (str): Path to the Flutter project directory.
+            packages (List[str]): List of package names to add.
+            dev (bool, optional): Add as dev dependencies. Default is False.
+        """
+        if not packages:
+            return
+
+        cmd = [self.flutter_path, 'pub', 'add']
+
+        if dev:
+            cmd.append('--dev')
+
+        cmd.extend(packages)
+
+        print(f"Executing: {' '.join(cmd)} in {project_dir}")
+
+        try:
+            result = subprocess.run(cmd, cwd=project_dir, check=True,
+                                    capture_output=True, text=True)
+            print(f"Successfully added packages: {', '.join(packages)}")
+            return result
+        except subprocess.CalledProcessError as e:
+            print(f"Error adding packages {packages}: {e}")
+            if e.stdout:
+                print(f"stdout: {e.stdout}")
+            if e.stderr:
+                print(f"stderr: {e.stderr}")
+            raise
+
+    def pub_remove(self, project_dir: str, packages: List[str]):
+        """
+        Remove packages using 'flutter pub remove'.
+
+        Args:
+            project_dir (str): Path to the Flutter project directory.
+            packages (List[str]): List of package names to remove.
+        """
+        if not packages:
+            return
+
+        cmd = [self.flutter_path, 'pub', 'remove'] + packages
+
+        print(f"Executing: {' '.join(cmd)} in {project_dir}")
+
+        try:
+            result = subprocess.run(cmd, cwd=project_dir, check=True,
+                                    capture_output=True, text=True)
+            print(f"Successfully removed packages: {', '.join(packages)}")
+            return result
+        except subprocess.CalledProcessError as e:
+            print(f"Error removing packages {packages}: {e}")
+            raise
+
+    def pub_get(self, project_dir: str):
         """
         Run 'flutter pub get' in the specified project directory.
 
         Args:
             project_dir (str): Path to the Flutter project directory.
         """
-        cmd = [
-            self.flutter_path,
-            'pub',
-            'get'
-        ]
+        cmd = [self.flutter_path, 'pub', 'get']
 
         print(f"Executing: {' '.join(cmd)} in {project_dir}")
 
@@ -140,3 +195,50 @@ class FlutterCLI:
         except subprocess.CalledProcessError as e:
             print(f"Error running 'flutter pub get': {e}")
             raise
+
+    def pub_upgrade(self, project_dir: str, packages: Optional[List[str]] = None):
+        """
+        Upgrade packages using 'flutter pub upgrade'.
+
+        Args:
+            project_dir (str): Path to the Flutter project directory.
+            packages (List[str], optional): List of specific packages to upgrade.
+                If None, upgrades all packages.
+        """
+        cmd = [self.flutter_path, 'pub', 'upgrade']
+
+        if packages:
+            cmd.extend(packages)
+
+        print(f"Executing: {' '.join(cmd)} in {project_dir}")
+
+        try:
+            result = subprocess.run(cmd, cwd=project_dir, check=True,
+                                    capture_output=True, text=True)
+            print("Successfully upgraded packages")
+            return result
+        except subprocess.CalledProcessError as e:
+            print(f"Error upgrading packages: {e}")
+            raise
+
+    def pub_deps(self, project_dir: str):
+        """
+        Show dependency tree using 'flutter pub deps'.
+
+        Args:
+            project_dir (str): Path to the Flutter project directory.
+        """
+        cmd = [self.flutter_path, 'pub', 'deps']
+
+        try:
+            result = subprocess.run(cmd, cwd=project_dir, check=True,
+                                    capture_output=True, text=True)
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            print(f"Error getting dependencies: {e}")
+            raise
+
+    # Método legado para compatibilidade
+    def run_pub_get(self, project_dir):
+        """Legacy method for compatibility."""
+        return self.pub_get(project_dir)
