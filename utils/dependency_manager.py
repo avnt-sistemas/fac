@@ -1,6 +1,5 @@
-from typing import List, Dict, Optional, Set
-import os
-
+import re
+from typing import List, Dict, Set
 
 class DependencyManager:
     """
@@ -272,6 +271,7 @@ class DependencyManager:
     def _parse_installed_dependencies(self, deps_output: str) -> Set[str]:
         """
         Extrai os nomes das dependências instaladas da saída do pub deps.
+        Versão independente que não depende de _normalize_tree_chars.
 
         Args:
             deps_output (str): Saída do comando pub deps
@@ -283,12 +283,101 @@ class DependencyManager:
 
         for line in deps_output.split('\n'):
             line = line.strip()
-            if line and not line.startswith('|') and not line.startswith('\\'):
-                # Extrai o nome do pacote (primeira palavra antes do espaço)
-                parts = line.split()
-                if parts and not parts[0].startswith('-'):
-                    package_name = parts[0].replace('├──', '').replace('└──', '').strip()
-                    if package_name:
+
+            # Pular linhas vazias e headers
+            if not line:
+                continue
+            if 'Dart SDK' in line or 'Flutter SDK' in line:
+                continue
+            if line.startswith('rally_manager') and '+' in line:
+                continue  # Pular linha do projeto principal
+
+            # Remover TODOS os caracteres de árvore possíveis (Unicode e ASCII)
+            # Padrões: ├──, └──, │, |, `, -, espaços, etc.
+            clean_line = re.sub(r'^[├└│|`─\-\s]*', '', line)
+
+            if clean_line:
+                # Extrair nome do pacote (primeira palavra antes do espaço ou versão)
+                # Formato típico: "package_name 1.2.3" ou "package_name..."
+                match = re.match(r'^([a-zA-Z0-9_]+)', clean_line)
+
+                if match:
+                    package_name = match.group(1)
+
+                    # Filtrar nomes que não são pacotes válidos
+                    if (package_name and
+                            not package_name.isdigit() and  # Não é só números
+                            len(package_name) > 1 and  # Tem mais de 1 caractere
+                            package_name != 'meta' and  # meta... é comum e pode confundir
+                            not package_name.startswith('.') and  # Não começa com ponto
+                            package_name not in {'flutter', 'sky_engine'}):  # Filtrar pacotes do sistema
+
+                        installed.add(package_name)
+
+        return installed
+
+    def _parse_installed_dependencies_robust(self, deps_output: str) -> Set[str]:
+        """
+        Versão ainda mais robusta que trata múltiplos formatos.
+
+        Args:
+            deps_output (str): Saída do comando pub deps
+
+        Returns:
+            Set[str]: Conjunto de dependências instaladas
+        """
+        installed = set()
+
+        # Lista de caracteres que podem aparecer no início das linhas de dependência
+        tree_chars = ['├', '└', '│', '|', '`', '─', '-', ' ', '\t']
+
+        for line in deps_output.split('\n'):
+            original_line = line
+            line = line.strip()
+
+            # Pular linhas vazias e headers conhecidos
+            if not line:
+                continue
+            if any(header in line for header in ['Dart SDK', 'Flutter SDK', 'rally_manager 1.0.0+1']):
+                continue
+
+            # Método mais agressivo para limpar caracteres de árvore
+            clean_line = line
+
+            # Remover caracteres de árvore do início
+            while clean_line and clean_line[0] in tree_chars:
+                clean_line = clean_line[1:]
+
+            # Remover padrões específicos como "──", "--", etc.
+            clean_line = re.sub(r'^[\-─]+\s*', '', clean_line)
+            clean_line = clean_line.strip()
+
+            if clean_line:
+                # Tentar extrair o nome do pacote
+                # Procurar por padrão: nome_pacote seguido de espaço e versão
+                patterns = [
+                    r'^([a-zA-Z0-9_]+)\s+([0-9]+\.[0-9]+\.[0-9]+)',  # nome versao
+                    r'^([a-zA-Z0-9_]+)\.\.\.',  # nome...
+                    r'^([a-zA-Z0-9_]+)$',  # só nome
+                    r'^([a-zA-Z0-9_]+)\s+',  # nome + espaço
+                ]
+
+                package_name = None
+                for pattern in patterns:
+                    match = re.match(pattern, clean_line)
+                    if match:
+                        package_name = match.group(1)
+                        break
+
+                if package_name:
+                    # Filtros de validação mais rigorosos
+                    if (len(package_name) > 1 and
+                            not package_name.isdigit() and
+                            package_name.isalnum() or '_' in package_name and
+                            package_name not in {
+                                'meta', 'collection', 'flutter', 'sky_engine',
+                                'material_color_utilities', 'vector_math', 'characters'
+                            }):
                         installed.add(package_name)
 
         return installed

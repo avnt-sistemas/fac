@@ -85,7 +85,7 @@ class SQLiteService {
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL
   {% if module.soft_delete %}
-        ,deleted INTEGER DEFAULT 0
+        ,deletedAt TEXT DEFAULT NULL
   {% endif %}
       );
     ''');
@@ -103,6 +103,34 @@ class SQLiteService {
 {% endfor %}
 
     await batch.commit();
+
+    /// Generate relationship tables
+    // Create tables for each relationship
+{% for module in modules %}
+    batch.execute('''
+      CREATE TABLE {{ module.name|lower }} (
+        id TEXT PRIMARY KEY,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+  {% if module.soft_delete %}
+        ,deletedAt TEXT DEFAULT NULL
+  {% endif %}
+      );
+    ''');
+
+{#    TODO: Create relationship tables here     #}
+
+  {% if module.fields|selectattr('unique', 'defined')|list|length > 0 %}
+    // Create unique indexes
+    {% for field in module.fields %}
+      {% if field.unique is defined and field.unique %}
+    batch.execute(
+      'CREATE UNIQUE INDEX idx_{{ module.name|lower }}_{{ field.name }} ON {{ module.name|lower }}({{ field.name }});',
+    );
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
   }
 
   /// Close the database

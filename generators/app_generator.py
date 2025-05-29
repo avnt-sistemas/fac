@@ -246,6 +246,9 @@ class AppGenerator:
         print("\n📦 Dependencies:")
         try:
             verification = self.dependency_manager.verify_dependencies(app_dir)
+            print("verification: >")
+            print(verification)
+            print("verification: <")
             missing_deps = [dep for dep, installed in verification.items() if not installed]
 
             if not missing_deps:
@@ -343,7 +346,6 @@ class AppGenerator:
 
         # Generate flutter commands
         self.app_dir = app_dir
-        self._run_flutter_commands()
 
     def _generate_app_files(self, app_dir):
         """Generate the base application files"""
@@ -539,37 +541,18 @@ class AppGenerator:
             with open(pubspec_path, 'r') as f:
                 pubspec_content = f.read()
 
-            # Prepare dependencies list
-            dependencies = [
-                "provider: ^6.0.5",  # State management
-                "get_it: ^7.6.0",  # Dependency injection
-                "dio: ^5.3.2",  # HTTP client
-                "equatable: ^2.0.5",  # Value equality
-                "shared_preferences: ^2.2.0",  # Local storage
-                "intl: ^0.19.0",  # Internationalization
-                "sqflite: ^2.2.8+4",  # Local database - always needed now
-                "path: ^1.8.3",  # Path utilities - needed for database
-                "uuid: ^4.1.0",  # Generate UUIDs for SQLite
-                "path_provider: ^2.1.1",  # Access to file system directories
-                "flutter_localizations:\n    sdk: flutter",  # CORRETO
-            ]
 
             # Aplica o template apenas para as seções que não são dependências
-            template = self.jinja_env.get_template('pubspec.yaml.jinja')
+            template = self.jinja_env.get_template('app/pubspec.yaml.jinja')
             template_content = template.render(
                 app_name=self.config['app']['name'],
                 app_description=self.config['app'].get('description', 'A new Flutter project'),
-                sqlite_enabled=self.config.get('persistence', {}).get('provider') == 'sqlite',
-                firebase_enabled=(
-                        self.config.get('auth', {}).get('provider') == 'firebase' or
-                        self.config.get('persistence', {}).get('provider') == 'firebase'
-                ),
-                auth_enabled=self.config.get('auth', {}).get('enabled', False)
+                sqlite_enabled=self.config.get('persistence', {}).get('provider') == 'sqlite'
             )
 
             # Extrai apenas as seções flutter: e assets do template
             # e preserva as dependências que já foram instaladas
-            lines = current_pubspec.split('\n')
+            lines = pubspec_content.split('\n')
             template_lines = template_content.split('\n')
 
             # Encontra onde começam as seções flutter
@@ -628,8 +611,6 @@ class AppGenerator:
             print("❌ Some dependencies are missing. Run the install command to fix.")
 
         return all_good
-            print(f"Error updating pubspec.yaml: {e}")
-            print("You may need to manually add the required dependencies.")
 
     def _generate_localizations(self, app_dir):
         """Generate .arb translation files"""
@@ -649,18 +630,16 @@ class AppGenerator:
             with open(os.path.join(l10n_dir, 'app_pt.arb'), 'w', encoding='utf-8') as f:
                 f.write(output)
 
+            self._run_flutter_genl10n()
+
         except Exception as e:
             print(f"Erro ao gerar arquivos de tradução: {e}")
 
-    def _run_flutter_commands(self):
-        """Run flutter commands inside the generated Flutter app directory"""
+    def _run_flutter_genl10n(self):
+        """Run `flutter gen-l10n` to generate localization files."""
         try:
-            print("Running `flutter pub get` in", self.app_dir)
-            subprocess.run(["flutter", "pub", "get"], cwd=self.app_dir, check=True)
-
-            print("Running `flutter gen-l10n`...")
-            subprocess.run(["flutter", "gen-l10n"], cwd=self.app_dir, check=True)
-
-            print("Flutter commands completed successfully.")
+            print("🔄 Running `flutter gen-l10n`...")
+            self.flutter_cli.pub_genl10n(self.app_dir)
+            print("✅ `flutter gen-l10n` completed successfully")
         except subprocess.CalledProcessError as e:
-            print(f"Error running Flutter commands: {e}")
+            print(f"❌ Error running `flutter gen-l10n`: {e}")

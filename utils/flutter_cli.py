@@ -3,6 +3,8 @@ import re
 import subprocess
 import platform
 import shutil
+import yaml
+from pathlib import Path
 from typing import List, Dict, Optional
 
 
@@ -110,6 +112,7 @@ class FlutterCLI:
 
         try:
             subprocess.run(cmd, check=True)
+            print(f"Successfully created Flutter project '{name}' in {output_dir}")
         except subprocess.CalledProcessError as e:
             print(f"Error creating Flutter project: {e}")
             raise
@@ -191,9 +194,14 @@ class FlutterCLI:
         print(f"Executing: {' '.join(cmd)} in {project_dir}")
 
         try:
-            subprocess.run(cmd, cwd=project_dir, check=True)
+            result = subprocess.run(cmd, cwd=project_dir, check=True,
+                                    capture_output=True, text=True)
+            print("Successfully ran 'flutter pub get'")
+            return result
         except subprocess.CalledProcessError as e:
             print(f"Error running 'flutter pub get': {e}")
+            if e.stderr:
+                print(f"stderr: {e.stderr}")
             raise
 
     def pub_upgrade(self, project_dir: str, packages: Optional[List[str]] = None):
@@ -221,24 +229,241 @@ class FlutterCLI:
             print(f"Error upgrading packages: {e}")
             raise
 
-    def pub_deps(self, project_dir: str):
+    def pub_deps(self, project_dir: str, normalize_output: bool = True):
         """
         Show dependency tree using 'flutter pub deps'.
 
         Args:
             project_dir (str): Path to the Flutter project directory.
+            normalize_output (bool): Se True, normaliza os caracteres Unicode para ASCII.
+
+        Returns:
+            str: Saída do comando pub deps
         """
         cmd = [self.flutter_path, 'pub', 'deps']
 
         try:
-            result = subprocess.run(cmd, cwd=project_dir, check=True,
-                                    capture_output=True, text=True)
-            return result.stdout
+            # Configurar environment para forçar saída ASCII no Windows
+            env = os.environ.copy()
+            if platform.system() == 'Windows':
+                # Forçar codificação UTF-8
+                env['PYTHONIOENCODING'] = 'utf-8'
+                env['CHCP'] = '65001'  # UTF-8 code page
+
+            result = subprocess.run(
+                cmd,
+                cwd=project_dir,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                env=env
+            )
+
+            output = result.stdout
+
+            if normalize_output:
+                output = self._normalize_tree_chars(output)
+
+            return output
+
         except subprocess.CalledProcessError as e:
             print(f"Error getting dependencies: {e}")
+            if e.stderr:
+                print(f"stderr: {e.stderr}")
             raise
+
+    def _normalize_tree_chars(self, text: str) -> str:
+        """
+        Normaliza os caracteres Unicode de desenho de árvore para ASCII.
+
+        Args:
+            text (str): Texto com caracteres Unicode
+
+        Returns:
+            str: Texto com caracteres ASCII normalizados
+        """
+        # Mapeamento de caracteres Unicode para ASCII
+        unicode_to_ascii = {
+            # Caracteres de caixa Unicode -> ASCII equivalentes
+            '├': '|',
+            '│': '|',
+            '└': '`',
+            '─': '-',
+            '├──': '|--',
+            '└──': '`--',
+            '│   ': '|   ',
+            # Outros possíveis caracteres
+            '┌': '+',
+            '┐': '+',
+            '┘': '+',
+            '┴': '+',
+            '┼': '+',
+            '┤': '+',
+        }
+
+        # Substituir caracteres Unicode pelos equivalentes ASCII
+        for unicode_char, ascii_char in unicode_to_ascii.items():
+            text = text.replace(unicode_char, ascii_char)
+
+        # Padrões mais complexos para árvores
+        # Substituir padrões comuns de árvore Unicode
+        patterns = [
+            (r'├──\s*', '|-- '),
+            (r'└──\s*', '`-- '),
+            (r'│\s{2,}', '|   '),
+            (r'├─', '|-'),
+            (r'└─', '`-'),
+        ]
+
+        for pattern, replacement in patterns:
+            text = re.sub(pattern, replacement, text)
+
+        return text
+
+    def get_pubspec(self, project_dir: str):
+        """
+        Recupera o conteúdo do arquivo pubspec.yaml de um projeto Flutter.
+
+        Args:
+            project_dir (str): Caminho para o diretório do projeto Flutter
+
+        Returns:
+            dict: Conteúdo do pubspec.yaml como dicionário
+
+        Raises:
+            FileNotFoundError: Se o arquivo pubspec.yaml não for encontrado
+            yaml.YAMLError: Se houver erro ao fazer parse do YAML
+        """
+        # Construir o caminho para o pubspec.yaml
+        pubspec_path = Path(project_dir) / 'pubspec.yaml'
+
+        # Verificar se o arquivo existe
+        if not pubspec_path.exists():
+            raise FileNotFoundError(f"pubspec.yaml não encontrado em: {pubspec_path}")
+
+        try:
+            # Ler e fazer parse do arquivo YAML
+            with open(pubspec_path, 'r', encoding='utf-8') as file:
+                pubspec_content = yaml.safe_load(file)
+
+            return pubspec_content
+
+        except yaml.YAMLError as e:
+            raise yaml.YAMLError(f"Erro ao fazer parse do pubspec.yaml: {e}")
+        except Exception as e:
+            raise Exception(f"Erro ao ler pubspec.yaml: {e}")
+
+    def pub_genl10n(self, project_dir: str):
+        """
+        Run 'flutter pub gen-l10n' command.
+        """
+        cmd = [self.flutter_path, 'gen-l10n']
+
+        print(f"Executing: {' '.join(cmd)} in {project_dir}")
+
+        try:
+            result = subprocess.run(cmd, cwd=project_dir, check=True,
+                                    capture_output=True, text=True)
+            print("Successfully generated l10n files")
+            return result
+        except subprocess.CalledProcessError as e:
+            if e.stdout:
+                print(f"stdout: {e.stdout}")
+            if e.stderr:
+                print(f"stderr: {e.stderr}")
+            raise
+
+    def verify_dependencies(self, project_dir: str) -> Dict:
+        """
+        Verifica e analisa as dependências do projeto.
+
+        Args:
+            project_dir (str): Path to the Flutter project directory.
+
+        Returns:
+            Dict: Análise das dependências
+        """
+        try:
+            # Obter saída das dependências
+            deps_output = self.pub_deps(project_dir, normalize_output=True)
+
+            # Análise básica
+            analysis = {
+                'raw_output': deps_output,
+                'total_packages': 0,
+                'flutter_version': None,
+                'dart_version': None,
+                'packages': []
+            }
+
+            # Extrair informações básicas
+            lines = deps_output.split('\n')
+            package_count = 0
+
+            for line in lines:
+                if 'Dart SDK' in line:
+                    analysis['dart_version'] = line.strip()
+                elif 'Flutter SDK' in line:
+                    analysis['flutter_version'] = line.strip()
+                elif line.strip() and not line.startswith('Dart SDK') and not line.startswith('Flutter SDK'):
+                    # Contar linhas que parecem ser pacotes
+                    if re.match(r'[|`\s]*[a-zA-Z0-9_]+\s+[0-9]+\.[0-9]+\.[0-9]+', line):
+                        package_count += 1
+                        # Extrair nome do pacote
+                        match = re.search(r'([a-zA-Z0-9_]+)\s+([0-9]+\.[0-9]+\.[0-9]+[^\s]*)', line)
+                        if match:
+                            analysis['packages'].append({
+                                'name': match.group(1),
+                                'version': match.group(2)
+                            })
+
+            analysis['total_packages'] = len(analysis['packages'])
+
+            return analysis
+
+        except Exception as e:
+            print(f"Error verifying dependencies: {e}")
+            return {
+                'error': str(e),
+                'raw_output': None,
+                'total_packages': 0,
+                'packages': []
+            }
 
     # Método legado para compatibilidade
     def run_pub_get(self, project_dir):
         """Legacy method for compatibility."""
         return self.pub_get(project_dir)
+
+    def list_methods(self):
+        """
+        Lista todos os métodos disponíveis na classe.
+        Útil para debug quando um método não é encontrado.
+        """
+        methods = [method for method in dir(self) if not method.startswith('_')]
+        print("Métodos disponíveis na classe FlutterCLI:")
+        for method in sorted(methods):
+            print(f"  - {method}")
+        return methods
+
+
+# Exemplo de uso e teste
+if __name__ == "__main__":
+    try:
+        # Instanciar a classe
+        flutter_cli = FlutterCLI()
+
+        print("Flutter CLI inicializado com sucesso!")
+        print(f"Caminho do Flutter: {flutter_cli.flutter_path}")
+
+        # Listar métodos disponíveis
+        flutter_cli.list_methods()
+
+        # Teste básico de criação de projeto (descomente para testar)
+        # flutter_cli.create_project("test_app", "com.example", ".")
+
+    except FileNotFoundError as e:
+        print(f"Erro: {e}")
+    except Exception as e:
+        print(f"Erro inesperado: {e}")

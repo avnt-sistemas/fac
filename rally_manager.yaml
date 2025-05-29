@@ -344,6 +344,7 @@ modules:
         type: "String"  # Director, Timer, etc.
       - name: "roles"
         type: "List<String>"
+        values: "const ['user', 'admin', 'manager', 'reader', 'supervised']"
         default: "const ['user']"  # admin, user, timer, director
     soft_delete: true
     export:
@@ -352,7 +353,7 @@ modules:
       pdf: false
 
 dashboard:
-  enabled: true
+  enabled: false # coming soon
   widgets:
     - type: "bar_chart"
       title: "Registrations by Event"

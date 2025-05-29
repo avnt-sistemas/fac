@@ -21,14 +21,14 @@ environment:
 
 flutter:
   uses-material-design: true
-
+  generate: true
   # Assets do projeto
   assets:
     - assets/images/
     - assets/icons/
-    {% if sqlite_enabled %}
+    {%- if sqlite_enabled %}
     - assets/db/
-    {% endif %}
+    {%- endif %}
 
   # Fontes customizadas (se necessário)
   # fonts:
@@ -38,8 +38,8 @@ flutter:
   #       - asset: assets/fonts/CustomFont-Bold.ttf
   #         weight: 700
 
-  localization:
-    arb-dir: lib/l10n
-    template-arb-file: intl_en.arb
-    output-localization-file: app_localizations.dart
-    output-class: AppLocalizations
+localization:
+  arb-dir: lib/l10n
+  template-arb-file: intl_en.arb
+  output-localization-file: app_localizations.dart
+  output-class: AppLocalizations
