@@ -189,7 +189,7 @@ class AppGenerator:
                 model_generator = ModelGenerator(app_dir, self.config)
                 for module_config in self.config['modules']:
                     module_name = module_config.get('name', 'Unknown')
-                    print(f"  📄 Generating module: {module_name}")
+                    print(f"📄 Generating module: {module_name}")
                     model_generator.generate_module(module_config)
                 print("✅ Modules generated successfully.")
             except Exception as e:
@@ -246,9 +246,6 @@ class AppGenerator:
         print("\n📦 Dependencies:")
         try:
             verification = self.dependency_manager.verify_dependencies(app_dir)
-            print("verification: >")
-            print(verification)
-            print("verification: <")
             missing_deps = [dep for dep, installed in verification.items() if not installed]
 
             if not missing_deps:
@@ -341,7 +338,7 @@ class AppGenerator:
 
         # Generate localizations
         if self.config.get('translations', {}).get('enabled', True):
-            print("Generating localizations...")
+            print("🌍 Generating localizations...")
             self._generate_localizations(app_dir)
 
         # Generate flutter commands
@@ -638,8 +635,8 @@ class AppGenerator:
     def _run_flutter_genl10n(self, app_dir):
         """Run `flutter gen-l10n` to generate localization files."""
         try:
-            print("🔄 Running `flutter gen-l10n`...")
+            # print("🔄 Running `flutter gen-l10n`...")
             self.flutter_cli.pub_genl10n(app_dir)
-            print("✅ `flutter gen-l10n` completed successfully")
+            # print("✅ `flutter gen-l10n` completed successfully")
         except subprocess.CalledProcessError as e:
             print(f"❌ Error running `flutter gen-l10n`: {e}")

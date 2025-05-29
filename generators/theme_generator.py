@@ -13,7 +13,6 @@ class ThemeGenerator:
 
     def generate(self):
         """Generate theme files for the Flutter app"""
-        print("Generating theme files...")
 
         # Create directory if it doesn't exist
         theme_dir = os.path.join(self.app_dir, 'lib', 'app', 'theme')
@@ -65,8 +64,6 @@ class ThemeGenerator:
             }
         )
 
-        print("Theme files generated successfully.")
-
     def _generate_file(self, template_path, output_path, context):
         """Generate a file from a template with the given context"""
         try:
@@ -76,7 +73,5 @@ class ThemeGenerator:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print(f"Generated {output_path}")
         except Exception as e:
             print(f"Error generating {output_path}: {e}")

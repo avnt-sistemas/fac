@@ -178,8 +178,6 @@ class ModelGenerator:
             print("Warning: Module config missing 'name' field.")
             return
 
-        print(f"Generating module: {module_name}")
-
         # Convert module name to various cases
         snake_case = self.case_converter.to_snake_case(module_name)
         camel_case = self.case_converter.to_camel_case(module_name)
@@ -226,8 +224,6 @@ class ModelGenerator:
         if relationships['direct'] or relationships['reverse']:
             self._generate_relationship_helpers(module_dir, module_name, pascal_case, module_config, relationships)
 
-        print(f"Module {module_name} generated successfully.")
-
     def _generate_entity(self, module_dir, module_name, pascal_case, module_config, relationships, related_imports):
         """Generate the entity class for the module with relationships"""
         try:
@@ -263,8 +259,6 @@ class ModelGenerator:
                                        f'{self.case_converter.to_snake_case(module_name)}_entity.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print(f"Generated entity for {module_name}")
         except Exception as e:
             print(f"Error generating entity for {module_name}: {e}")
 
@@ -301,8 +295,6 @@ class ModelGenerator:
                                        f'{self.case_converter.to_snake_case(module_name)}_model.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print(f"Generated model for {module_name}")
         except Exception as e:
             print(f"Error generating model for {module_name}: {e}")
 
@@ -321,8 +313,6 @@ class ModelGenerator:
                                        f'i_{self.case_converter.to_snake_case(module_name)}_repository.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print(f"Generated repository interface for {module_name}")
         except Exception as e:
             print(f"Error generating repository interface for {module_name}: {e}")
 
@@ -363,8 +353,6 @@ class ModelGenerator:
                                            f'{self.case_converter.to_snake_case(module_name)}_repository_impl.dart')
                 with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(output)
-
-                print(f"Generated repository implementation for {module_name}")
         except Exception as e:
             print(f"Error generating repository implementation for {module_name}: {e}")
 
@@ -389,8 +377,6 @@ class ModelGenerator:
                                            f'{usecase}_{self.case_converter.to_snake_case(module_name)}_usecase.dart')
                 with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(output)
-
-            print(f"Generated usecases for {module_name}")
         except Exception as e:
             print(f"Error generating usecases for {module_name}: {e}")
 
@@ -409,8 +395,6 @@ class ModelGenerator:
                                        f'{self.case_converter.to_snake_case(module_name)}_controller.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print(f"Generated controller for {module_name}")
         except Exception as e:
             print(f"Error generating controller for {module_name}: {e}")
 
@@ -481,8 +465,6 @@ class ModelGenerator:
                     with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                         f.write(output)
 
-                    print(f"Generated {screen_type} screen for {module_name}")
-
                     if screen_type == 'form':
                         create_path = os.path.join(module_dir, 'presentation', 'screens',
                                                    f'{snake_case_name}_create_screen.dart')
@@ -500,7 +482,6 @@ class {pascal_case}CreateScreen extends StatelessWidget {{
     );
   }}
 }}""")
-                        print(f"Generated create screen for {module_name}")
 
                         edit_path = os.path.join(module_dir, 'presentation', 'screens',
                                                  f'{snake_case_name}_edit_screen.dart')
@@ -522,7 +503,6 @@ class {pascal_case}EditScreen extends StatelessWidget {{
     );
   }}
 }}""")
-                        print(f"Generated edit screen for {module_name}")
 
                 except jinja2_exceptions.TemplateNotFound:
                     print(f"Warning: Template 'screens/{template_file}' not found, skipping")
@@ -566,9 +546,6 @@ class {pascal_case}EditScreen extends StatelessWidget {{
                 'reverse': processed_reverse
             }
 
-            print(f"Generating relationship service for {module_name}")
-            print(adjusted_relationships)
-
             output = template.render(
                 snake_case=self.case_converter.to_snake_case(module_name),
                 module_name=module_name,
@@ -584,8 +561,6 @@ class {pascal_case}EditScreen extends StatelessWidget {{
                                        f'{self.case_converter.to_snake_case(module_name)}_relationship_service.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print(f"Generated relationship service for {module_name}")
 
         except Exception as e:
             print(f"Error generating relationship service for {module_name}: {e}")
@@ -623,8 +598,6 @@ class {pascal_case}EditScreen extends StatelessWidget {{
                                        f'{self.case_converter.to_snake_case(module_name)}_relationship_queries.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print(f"Generated relationship queries for {module_name}")
 
         except Exception as e:
             print(f"Error generating relationship queries for {module_name}: {e}")

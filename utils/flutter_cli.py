@@ -108,7 +108,7 @@ class FlutterCLI:
             os.path.join(output_dir, name)
         ]
 
-        print(f"Executing: {' '.join(cmd)}")
+        # print(f"Executing: {' '.join(cmd)}")
 
         try:
             subprocess.run(cmd, check=True)
@@ -143,12 +143,12 @@ class FlutterCLI:
 
         cmd.extend(packages)
 
-        print(f"Executing: {' '.join(cmd)} in {project_dir}")
+        # print(f"Executing: {' '.join(cmd)} in {project_dir}")
 
         try:
             result = subprocess.run(cmd, cwd=project_dir, check=True,
                                     capture_output=True, text=True)
-            print(f"Successfully added packages: {', '.join(packages)}")
+            # print(f"Successfully added packages: {', '.join(packages)}")
             return result
         except subprocess.CalledProcessError as e:
             print(f"Error adding packages {packages}: {e}")
@@ -171,7 +171,7 @@ class FlutterCLI:
 
         cmd = [self.flutter_path, 'pub', 'remove'] + packages
 
-        print(f"Executing: {' '.join(cmd)} in {project_dir}")
+        # print(f"Executing: {' '.join(cmd)} in {project_dir}")
 
         try:
             result = subprocess.run(cmd, cwd=project_dir, check=True,
@@ -191,12 +191,11 @@ class FlutterCLI:
         """
         cmd = [self.flutter_path, 'pub', 'get']
 
-        print(f"Executing: {' '.join(cmd)} in {project_dir}")
+        # print(f"Executing: {' '.join(cmd)} in {project_dir}")
 
         try:
             result = subprocess.run(cmd, cwd=project_dir, check=True,
                                     capture_output=True, text=True)
-            print("Successfully ran 'flutter pub get'")
             return result
         except subprocess.CalledProcessError as e:
             print(f"Error running 'flutter pub get': {e}")
@@ -218,7 +217,7 @@ class FlutterCLI:
         if packages:
             cmd.extend(packages)
 
-        print(f"Executing: {' '.join(cmd)} in {project_dir}")
+        # print(f"Executing: {' '.join(cmd)} in {project_dir}")
 
         try:
             result = subprocess.run(cmd, cwd=project_dir, check=True,
@@ -360,12 +359,12 @@ class FlutterCLI:
         """
         cmd = [self.flutter_path, 'gen-l10n']
 
-        print(f"Executing: {' '.join(cmd)} in {project_dir}")
+        # print(f"Executing: {' '.join(cmd)} in {project_dir}")
 
         try:
             result = subprocess.run(cmd, cwd=project_dir, check=True,
                                     capture_output=True, text=True)
-            print("Successfully generated l10n files")
+            # print("Successfully generated l10n files")
             return result
         except subprocess.CalledProcessError as e:
             if e.stdout:

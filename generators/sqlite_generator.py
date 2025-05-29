@@ -20,7 +20,7 @@ class SQLiteGenerator:
         if self.config.get('persistence', {}).get('provider') != 'sqlite':
             return
 
-        print("Generating SQLite infrastructure...")
+        print("🧩 Generating SQLite infrastructure...")
 
         # Create directories for SQLite files
         core_datasources_dir = os.path.join(self.app_dir, 'lib', 'core', 'data', 'datasources')
@@ -55,8 +55,6 @@ class SQLiteGenerator:
             output_path = os.path.join(output_dir, 'sqlite_service.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print("Generated SQLite service")
         except Exception as e:
             print(f"Error generating SQLite service: {e}")
 
@@ -69,8 +67,6 @@ class SQLiteGenerator:
             output_path = os.path.join(output_dir, 'sqlite_helper.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print("Generated SQLite helper")
         except Exception as e:
             print(f"Error generating SQLite helper: {e}")
 
@@ -83,8 +79,6 @@ class SQLiteGenerator:
             output_path = os.path.join(output_dir, 'sqlite_relationship_helper.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print("Generated SQLite relationship helper")
         except Exception as e:
             print(f"Error generating SQLite relationship helper: {e}")
 
@@ -97,8 +91,6 @@ class SQLiteGenerator:
             output_path = os.path.join(output_dir, 'sqlite_schema.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print("Generated SQLite schema utility")
         except Exception as e:
             print(f"Error generating SQLite schema utility: {e}")
 
@@ -114,8 +106,6 @@ class SQLiteGenerator:
             output_path = os.path.join(output_dir, 'sqlite_migration_manager.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print("Generated SQLite migration manager")
         except Exception as e:
             print(f"Error generating SQLite migration manager: {e}")
 
@@ -134,8 +124,6 @@ class SQLiteGenerator:
             output_path = os.path.join(output_dir, 'database_initializer.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print("Generated database initializer")
         except Exception as e:
             print(f"Error generating database initializer: {e}")
 
@@ -148,8 +136,6 @@ class SQLiteGenerator:
             output_path = os.path.join(output_dir, 'export_service.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print("Generated export service")
         except Exception as e:
             print(f"Error generating export service: {e}")
 
@@ -195,8 +181,6 @@ class SQLiteGenerator:
                     file.write("-- Index creation\n")
                     for statement in create_indexes:
                         file.write(f"{statement}\n\n")
-
-            print("Generated SQLite migrations file")
         except Exception as e:
             print(f"Error generating SQLite migrations file: {e}")
 
@@ -229,8 +213,6 @@ class SQLiteGenerator:
             output_path = os.path.join(output_dir, f'{snake_case}_repository_impl.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print(f"Generated SQLite repository implementation for {module_name}")
         except Exception as e:
             print(f"Error generating SQLite repository implementation for {module_config.get('name', 'unknown')}: {e}")
 
@@ -259,8 +241,6 @@ class SQLiteGenerator:
             output_path = os.path.join(output_dir, f'{snake_case}_list_screen.dart')
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
-
-            print(f"Generated list screen with export for {module_name}")
             return True
         except Exception as e:
             print(f"Error generating list screen with export for {module_config.get('name', 'unknown')}: {e}")
@@ -288,8 +268,6 @@ class SQLiteGenerator:
 
                 with open(detail_screen_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(output)
-
-                print(f"Generated detail screen for {module_name}")
             except Exception as e:
                 print(f"Error generating detail screen stub: {e}")
 
@@ -309,8 +287,6 @@ class SQLiteGenerator:
 
                 with open(form_screen_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(output)
-
-                print(f"Generated form screen for {module_name}")
             except Exception as e:
                 print(f"Error generating form screen stub: {e}")
 
@@ -348,8 +324,6 @@ class SQLiteGenerator:
                 os.makedirs(module_test_dir, exist_ok=True)
 
                 self._generate_repository_test(module_test_dir, module)
-
-            print("Generated SQLite tests")
         except Exception as e:
             print(f"Error generating SQLite tests: {e}")
 

@@ -142,11 +142,9 @@ class DependencyManager:
         """
         required_deps = self.get_required_dependencies()
 
-        print("Installing dependencies...")
-
         # Instala dependências normais
         if required_deps['dependencies']:
-            print(f"Adding dependencies: {', '.join(required_deps['dependencies'])}")
+            # print(f"Adding dependencies: {', '.join(required_deps['dependencies'])}")
             try:
                 self.flutter_cli.pub_add(project_dir, required_deps['dependencies'])
                 print("✅ Dependencies added successfully")
@@ -157,7 +155,7 @@ class DependencyManager:
 
         # Instala dependências de desenvolvimento
         if required_deps['dev_dependencies']:
-            print(f"Adding dev dependencies: {', '.join(required_deps['dev_dependencies'])}")
+            # print(f"Adding dev dependencies: {', '.join(required_deps['dev_dependencies'])}")
             try:
                 self.flutter_cli.pub_add(project_dir, required_deps['dev_dependencies'], dev=True)
                 print("✅ Dev dependencies added successfully")
