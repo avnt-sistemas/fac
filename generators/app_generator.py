@@ -99,15 +99,6 @@ class AppGenerator:
             print("Make sure you have Flutter installed and that the name and organization are valid.")
             raise
 
-        # Install dependencies FIRST using the new dependency manager
-        print("📦 Installing dependencies...")
-        try:
-            self.dependency_manager.install_dependencies(app_dir)
-            print("✅ Dependencies installed successfully.")
-        except Exception as e:
-            print(f"⚠️ Warning: Error installing dependencies: {e}")
-            print("You may need to run 'flutter pub get' manually later.")
-
         # Generate project structure
         print("🏗️ Generating project structure...")
         try:
@@ -124,6 +115,15 @@ class AppGenerator:
             print("✅ pubspec.yaml updated successfully.")
         except Exception as e:
             print(f"❌ Error updating pubspec.yaml: {e}")
+
+        # Install dependencies FIRST using the new dependency manager
+        print("📦 Installing dependencies...")
+        try:
+            self.dependency_manager.install_dependencies(app_dir)
+            print("✅ Dependencies installed successfully.")
+        except Exception as e:
+            print(f"⚠️ Warning: Error installing dependencies: {e}")
+            print("You may need to run 'flutter pub get' manually later.")
 
         # Generate theme
         if 'theme' in self.config:
@@ -630,16 +630,16 @@ class AppGenerator:
             with open(os.path.join(l10n_dir, 'app_pt.arb'), 'w', encoding='utf-8') as f:
                 f.write(output)
 
-            self._run_flutter_genl10n()
+            self._run_flutter_genl10n(app_dir)
 
         except Exception as e:
             print(f"Erro ao gerar arquivos de tradução: {e}")
 
-    def _run_flutter_genl10n(self):
+    def _run_flutter_genl10n(self, app_dir):
         """Run `flutter gen-l10n` to generate localization files."""
         try:
             print("🔄 Running `flutter gen-l10n`...")
-            self.flutter_cli.pub_genl10n(self.app_dir)
+            self.flutter_cli.pub_genl10n(app_dir)
             print("✅ `flutter gen-l10n` completed successfully")
         except subprocess.CalledProcessError as e:
             print(f"❌ Error running `flutter gen-l10n`: {e}")
