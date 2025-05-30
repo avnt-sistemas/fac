@@ -32,13 +32,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Login'),
+        title: Text(AppLocalizations.of(context)!.loginTitle),
       ),
       body: Consumer<AuthController>(
         builder: (context, authController, child) {
           if (authController.isLoading) {
             return const LoadingIndicator(
-              message: 'Signing in...',
+              message: AppLocalizations.of(context)!.signingIn,
             );
           }
 
@@ -68,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
 {% if auth_provider == 'firebase' %}
                   const SizedBox(height: Dimensions.marginXL),
                   const Text(
-                    'Or sign in with',
+                    AppLocalizations.of(context)!.orSignInWith,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.grey,
@@ -104,12 +104,12 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: Dimensions.marginS),
           Text(
-            'Welcome Back',
+            AppLocalizations.of(context)!.welcomeBack,
             style: Theme.of(context).textTheme.headline5,
           ),
           const SizedBox(height: Dimensions.marginS),
           Text(
-            'Sign in to continue',
+            AppLocalizations.of(context)!.signInToContinue,
             style: Theme.of(context).textTheme.subtitle1?.copyWith(
               color: Colors.grey,
             ),
@@ -118,6 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+
 
   Widget _buildErrorMessage(String error) {
     return Container(
@@ -159,11 +160,11 @@ class _LoginScreenState extends State<LoginScreen> {
             });
           },
         ),
-        const Text('Remember me'),
+        Text(AppLocalizations.of(context)!.rememberMe),
         const Spacer(),
         TextButton(
           onPressed: _navigateToForgotPassword,
-          child: const Text('Forgot Password?'),
+          child: Text(AppLocalizations.of(context)!.forgotPassword),
         ),
       ],
     );
@@ -175,9 +176,9 @@ class _LoginScreenState extends State<LoginScreen> {
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
       ),
-      child: const Text(
-        'Sign In',
-        style: TextStyle(
+      child: Text(
+        AppLocalizations.of(context)!.signIn,
+        style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
@@ -189,10 +190,10 @@ class _LoginScreenState extends State<LoginScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text("Don't have an account?"),
+        Text(AppLocalizations.of(context)!.noAccount),
         TextButton(
           onPressed: _navigateToRegister,
-          child: const Text('Sign Up'),
+          child: Text( AppLocalizations.of(context)!.signUp),
         ),
       ],
     );

@@ -1,4 +1,6 @@
-/// Base exception class for application-specific exceptions
+import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 class AppException implements Exception {
   final String message;
   final String? code;
@@ -13,52 +15,54 @@ class AppException implements Exception {
   @override
   String toString() {
     String result = 'AppException';
-    if (code != null) {
-      result += ' [$code]';
-    }
+    if (code != null) result += ' [$code]';
     result += ': $message';
-    if (details != null) {
-      result += '\nDetails: $details';
-    }
+    if (details != null) result += '\nDetails: $details';
     return result;
   }
 }
 
-/// Exception for unauthorized access
 class UnauthorizedException extends AppException {
-  const UnauthorizedException({
-    String message = 'Unauthorized access',
+  UnauthorizedException({
+    required String message,
     String? code = 'UNAUTHORIZED',
     dynamic details,
-  }) : super(
-          message: message,
-          code: code,
-          details: details,
-        );
+  }) : super(message: message, code: code, details: details);
+
+  factory UnauthorizedException.fromContext(BuildContext context, {dynamic details}) {
+    return UnauthorizedException(
+      message: AppLocalizations.of(context)!.unauthorizedMessage,
+      details: details,
+    );
+  }
 }
 
-/// Exception for not found resources
 class NotFoundException extends AppException {
-  const NotFoundException({
-    String message = 'Resource not found',
+  NotFoundException({
+    required String message,
     String? code = 'NOT_FOUND',
     dynamic details,
-  }) : super(
-          message: message,
-          code: code,
-          details: details,
-        );
+  }) : super(message: message, code: code, details: details);
+
+  factory NotFoundException.fromContext(BuildContext context, {dynamic details}) {
+    return NotFoundException(
+      message: AppLocalizations.of(context)!.notFoundMessage,
+      details: details,
+    );
+  }
 }
 
-/// Exception for validation errors
 class ValidationException extends AppException {
-  const ValidationException({
-    String message = 'Validation failed',
+  ValidationException({
+    required String message,
     String? code = 'VALIDATION_ERROR',
     dynamic details,
-  }) : super(
-          message: message,
-          code: code,
-          details: details,
-        );
+  }) : super(message: message, code: code, details: details);
+
+  factory ValidationException.fromContext(BuildContext context, {dynamic details}) {
+    return ValidationException(
+      message: AppLocalizations.of(context)!.validationFailed,
+      details: details,
+    );
+  }
 }

@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'app_exception.dart';
 
 /// Exception for network-related errors
 class NetworkException extends AppException {
   const NetworkException({
-    String message = 'Network error occurred',
+    required String message,
     String? code = 'NETWORK_ERROR',
     dynamic details,
   }) : super(
@@ -13,26 +15,27 @@ class NetworkException extends AppException {
           details: details,
         );
 
-  /// Factory method to create NetworkException from an error
-  factory NetworkException.fromError(dynamic error) {
+  static NetworkException fromError(BuildContext context, dynamic error) {
+    final loc = AppLocalizations.of(context)!;
+
     if (error is SocketException) {
-      return const NetworkException(
-        message: 'No internet connection',
+      return NetworkException(
+        message: loc.noInternet,
         code: 'NO_INTERNET',
       );
     } else if (error is HttpException) {
       return NetworkException(
-        message: 'HTTP error occurred: ${error.message}',
+        message: loc.httpError(error.message),
         code: 'HTTP_ERROR',
       );
     } else if (error is FormatException) {
       return NetworkException(
-        message: 'Invalid response format: ${error.message}',
+        message: loc.invalidFormat(error.message),
         code: 'FORMAT_ERROR',
       );
     } else {
       return NetworkException(
-        message: 'Unknown network error: ${error.toString()}',
+        message: loc.unknownNetworkError(error.toString()),
         code: 'UNKNOWN',
         details: error,
       );
