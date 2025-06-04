@@ -21,8 +21,8 @@ class DependencyManager:
                 'share_plus',  # Value equality
                 'equatable',  # Value equality
                 'shared_preferences',  # Local storage
-                # 'flutter_localizations',  # Internationalization
-                'intl',  # Internationalization
+                'flutter_gen',  # Internationalization
+                # 'intl',  # Internationalization
             ],
 
             # Dependências para SQLite

@@ -108,14 +108,6 @@ class AppGenerator:
             print(f"❌ Error generating project structure: {e}")
             raise
 
-        # Update pubspec.yaml with custom template (for metadata and assets)
-        print("📝 Updating pubspec.yaml with template...")
-        try:
-            self._update_pubspec_template(app_dir)
-            print("✅ pubspec.yaml updated successfully.")
-        except Exception as e:
-            print(f"❌ Error updating pubspec.yaml: {e}")
-
         # Install dependencies FIRST using the new dependency manager
         print("📦 Installing dependencies...")
         try:
@@ -182,6 +174,11 @@ class AppGenerator:
             except Exception as e:
                 print(f"❌ Error setting up SQLite persistence: {e}")
 
+        # Generate localizations
+        if self.config.get('translations', {}).get('enabled', True):
+            print("🌍 Generating localizations...")
+            self._generate_localizations(app_dir)
+
         # Generate modules
         if 'modules' in self.config:
             print("🧩 Generating modules...")
@@ -212,6 +209,15 @@ class AppGenerator:
             print("✅ Final dependencies check completed.")
         except subprocess.CalledProcessError as e:
             print(f"⚠️ Warning: Failed to run final 'flutter pub get'. Details: {e}")
+
+        # Update pubspec.yaml with custom template (for metadata and assets)
+        print("📝 Updating pubspec.yaml with template...")
+        try:
+            self._update_pubspec_template(app_dir)
+            self._run_flutter_genl10n(app_dir)
+            print("✅ pubspec.yaml updated successfully.")
+        except Exception as e:
+            print(f"❌ Error updating pubspec.yaml: {e}")
 
         print(f"\n🎉 Flutter application '{app_name}' created successfully!")
         print(f"📁 Location: {app_dir}")
@@ -336,11 +342,6 @@ class AppGenerator:
         # Generate core error handlers
         self._generate_error_handlers(app_dir)
 
-        # Generate localizations
-        if self.config.get('translations', {}).get('enabled', True):
-            print("🌍 Generating localizations...")
-            self._generate_localizations(app_dir)
-
         # Generate flutter commands
         self.app_dir = app_dir
 
@@ -461,6 +462,15 @@ class AppGenerator:
     def _generate_core_widgets(self, app_dir):
         """Generate core widgets used in the application"""
         try:
+            modules = self.config.get('modules', [])
+            c = CaseConverter()
+
+            for module in modules:
+                if 'name' in module:
+                    module['camel_name'] = c.to_camel_case(module['name'])
+                    module['snake_name'] = c.to_snake_case(module['name'])
+                    module['pascal_name'] = c.to_pascal_case(module['name'])
+
             # Generate loading indicator
             template = self.jinja_env.get_template('core/widgets/loading_indicator.dart.jinja')
             output = template.render()
@@ -493,6 +503,18 @@ class AppGenerator:
             output = template.render()
 
             output_path = os.path.join(app_dir, 'lib', 'core', 'widgets', 'confirmation_dialog.dart')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
+                f.write(output)
+
+            # Generate base screen
+            template = self.jinja_env.get_template('core/screens/responsive_base_screen.dart.jinja')
+            output = template.render(
+                app_name=self.config['app']['name'],
+                has_auth=self.config.get('auth', {}).get('enabled', False),
+                modules=self.config.get('modules', [])
+            )
+            output_path = os.path.join(app_dir, 'lib', 'core', 'screens', 'responsive_base_screen.dart')
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(output)
@@ -534,46 +556,63 @@ class AppGenerator:
         try:
             pubspec_path = os.path.join(app_dir, 'pubspec.yaml')
 
-            # Le o pubspec atual (que já tem as dependências instaladas)
+            # Le o pubspec atual
             with open(pubspec_path, 'r') as f:
                 pubspec_content = f.read()
 
-
-            # Aplica o template apenas para as seções que não são dependências
-            template = self.jinja_env.get_template('app/pubspec.yaml.jinja')
-            template_content = template.render(
-                app_name=self.config['app']['name'],
-                app_description=self.config['app'].get('description', 'A new Flutter project'),
-                sqlite_enabled=self.config.get('persistence', {}).get('provider') == 'sqlite'
-            )
-
-            # Extrai apenas as seções flutter: e assets do template
-            # e preserva as dependências que já foram instaladas
             lines = pubspec_content.split('\n')
-            template_lines = template_content.split('\n')
 
-            # Encontra onde começam as seções flutter
-            flutter_section_start = -1
+            # Encontra onde termina a última dependência e onde começa flutter
+            last_dep_line = -1
+            flutter_start = -1
+
             for i, line in enumerate(lines):
-                if line.strip().startswith('flutter:'):
-                    flutter_section_start = i
+                if line.startswith('  ') and ':' in line and not line.strip().startswith(
+                        '#') and 'dependencies:' not in line:
+                    last_dep_line = i
+                elif line.strip().startswith('flutter:'):
+                    flutter_start = i
                     break
 
-            if flutter_section_start != -1:
-                # Substitui a seção flutter com a do template
-                new_lines = lines[:flutter_section_start]
+            if last_dep_line != -1 and flutter_start != -1:
+                result_lines = []
 
-                # Adiciona a seção flutter do template
-                template_flutter_started = False
-                for line in template_lines:
-                    if line.strip().startswith('flutter:'):
-                        template_flutter_started = True
-                    if template_flutter_started:
-                        new_lines.append(line)
+                # Adiciona tudo até a última dependência
+                result_lines.extend(lines[:last_dep_line + 1])
 
-                # Escreve o pubspec atualizado
+                # Adiciona flutter_localizations
+                result_lines.append('  flutter_localizations:')
+                result_lines.append('      sdk: flutter')
+                result_lines.append('')
+
+                # Pula dev_dependencies até flutter (preserva como está)
+                result_lines.extend(lines[last_dep_line + 1:flutter_start])
+
+                # Adiciona localization section
+                result_lines.append('localization:')
+                result_lines.append('  arb-dir: lib/l10n')
+                result_lines.append('  template-arb-file: intl_en.arb')
+                result_lines.append('  output-localization-file: app_localizations.dart')
+                result_lines.append('  output-class: AppLocalizations')
+                result_lines.append('')
+
+                # Adiciona nova flutter section
+                sqlite_enabled = self.config.get('persistence', {}).get('provider') == 'sqlite'
+                result_lines.append('flutter:')
+                result_lines.append('')
+                result_lines.append('  uses-material-design: true')
+                result_lines.append('  generate: true')
+                result_lines.append('')
+                result_lines.append('  # Assets do projeto')
+                result_lines.append('  assets:')
+                result_lines.append('    - assets/images/')
+                result_lines.append('    - assets/icons/')
+                if sqlite_enabled:
+                    result_lines.append('    - assets/db/')
+
+                # Escreve o resultado
                 with open(pubspec_path, 'w', encoding='utf-8', newline='\n') as f:
-                    f.write('\n'.join(new_lines))
+                    f.write('\n'.join(result_lines))
 
         except Exception as e:
             print(f"❌ Error updating pubspec template: {e}")
@@ -632,8 +671,6 @@ class AppGenerator:
             )
             with open(os.path.join(l10n_dir, 'app_pt.arb'), 'w', encoding='utf-8') as f:
                 f.write(output)
-
-            self._run_flutter_genl10n(app_dir)
 
         except Exception as e:
             print(f"Erro ao gerar arquivos de tradução: {e}")

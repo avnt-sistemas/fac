@@ -4,15 +4,15 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 class ResponsiveBaseScreen extends StatefulWidget {
   final Widget child;
   final String title;
-  final int selectedIndex;
   final Function(int) onItemSelected;
+  final Widget? floatingActionButton;
 
   const ResponsiveBaseScreen({
     Key? key,
     required this.child,
     required this.title,
-    required this.selectedIndex,
     required this.onItemSelected,
+    this.floatingActionButton,
   }) : super(key: key);
 
   @override
@@ -20,17 +20,32 @@ class ResponsiveBaseScreen extends StatefulWidget {
 }
 
 class _ResponsiveBaseScreenState extends State<ResponsiveBaseScreen> {
+
+  final int currentIndex = _getCurrentIndexFromRoute();
+
   // Lista de itens do menu gerada automaticamente
   final List<NavigationItem> _navigationItems = [
 {%- for module in modules %}
     NavigationItem(
       icon: Icons.{{ module.icon }},
       label: '{{ module.translations.plural.get(default_locale, module.name) }}',
-      route: '/{{ module.snake_name }}',
-      color: {{ module.menu_color if module.menu_color else 'null' }},
+      route: '/{{ module.snake_name }}'
+{#      color: {{ module.menu_color if module.menu_color else 'null' }},#}
     ),
 {%- endfor %}
   ];
+
+  int _getCurrentIndexFromRoute() {
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+    if (currentRoute == null) return 0;
+
+    for (int i = 0; i < _navigationItems.length; i++) {
+      if (_navigationItems[i].route == currentRoute) {
+        return i;
+      }
+    }
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +67,7 @@ class _ResponsiveBaseScreenState extends State<ResponsiveBaseScreen> {
 
   Widget _buildDesktopLayout() {
     return Scaffold(
+      floatingActionButton: widget.floatingActionButton,
       body: Row(
         children: [
           // Menu lateral expandido
@@ -202,6 +218,7 @@ class _ResponsiveBaseScreenState extends State<ResponsiveBaseScreen> {
 
   Widget _buildTabletLayout() {
     return Scaffold(
+      floatingActionButton: widget.floatingActionButton,
       body: Row(
         children: [
           // Menu lateral compacto (apenas ícones)
@@ -290,6 +307,7 @@ class _ResponsiveBaseScreenState extends State<ResponsiveBaseScreen> {
 
   Widget _buildMobileLayout() {
     return Scaffold(
+      floatingActionButton: widget.floatingActionButton,
       appBar: AppBar(
         title: Text(widget.title),
 {%- if has_auth %}
@@ -371,7 +389,7 @@ class _ResponsiveBaseScreenState extends State<ResponsiveBaseScreen> {
 
   Widget _buildExpandedMenuItem(int index) {
     final item = _navigationItems[index];
-    final isSelected = widget.selectedIndex == index;
+    final isSelected = currentIndex == index;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -413,7 +431,7 @@ class _ResponsiveBaseScreenState extends State<ResponsiveBaseScreen> {
 
   Widget _buildCompactMenuItem(int index) {
     final item = _navigationItems[index];
-    final isSelected = widget.selectedIndex == index;
+    final isSelected = currentIndex == index;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -448,7 +466,7 @@ class _ResponsiveBaseScreenState extends State<ResponsiveBaseScreen> {
 
   Widget _buildDrawerMenuItem(int index) {
     final item = _navigationItems[index];
-    final isSelected = widget.selectedIndex == index;
+    final isSelected = currentIndex == index;
 
     return ListTile(
       leading: Container(
