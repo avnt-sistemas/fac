@@ -359,7 +359,7 @@ class FlutterCLI:
         """
         cmd = [self.flutter_path, 'gen-l10n']
 
-        # print(f"Executing: {' '.join(cmd)} in {project_dir}")
+        print(f"Executing: {' '.join(cmd)} in {project_dir}")
 
         try:
             result = subprocess.run(cmd, cwd=project_dir, check=True,

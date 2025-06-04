@@ -1,0 +1,345 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../core/widgets/responsive_base_screen.dart';
+
+class MainMenuScreen extends StatefulWidget {
+  const MainMenuScreen({Key? key}) : super(key: key);
+
+  @override
+  State<MainMenuScreen> createState() => _MainMenuScreenState();
+}
+
+class _MainMenuScreenState extends State<MainMenuScreen> {
+  int _selectedIndex = {% if modules %}0{% else %}-1{% endif %};
+
+  @override
+  Widget build(BuildContext context) {
+    return ResponsiveBaseScreen(
+      title: _getTitleForIndex(_selectedIndex),
+      selectedIndex: _selectedIndex,
+      onItemSelected: (index) {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
+      child: _getContentForIndex(_selectedIndex),
+    );
+  }
+
+  String _getTitleForIndex(int index) {
+    final l10n = AppLocalizations.of(context)!;
+
+{%- for module in modules %}
+    if (index == {{ loop.index0 }}) {
+      return l10n.{{ module.snake_name }}Plural ?? '{{ module.translations.plural.get(default_locale, module.name) }}';
+    }
+{%- endfor %}
+
+    return l10n.appTitle ?? '{{ app_name }}';
+  }
+
+  Widget _getContentForIndex(int index) {
+{%- for module in modules %}
+    if (index == {{ loop.index0 }}) {
+      return _build{{ module.name }}ModuleHome();
+    }
+{%- endfor %}
+
+    return _buildWelcomeScreen();
+  }
+
+{%- if has_dashboard %}
+  Widget _buildDashboard() {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.dashboard ?? 'Dashboard',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: MediaQuery.of(context).size.width > 1200 ? 4 :
+                           MediaQuery.of(context).size.width > 800 ? 3 :
+                           MediaQuery.of(context).size.width > 600 ? 2 : 1,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+{%- for module in modules %}
+                _buildDashboardCard(
+                  title: l10n.{{ module.snake_name }}Plural ?? '{{ module.translations.plural.get(default_locale, module.name) }}',
+                  icon: Icons.{{ module.icon }},
+                  color: {{ module.menu_color if module.menu_color else 'Theme.of(context).primaryColor' }},
+                  onTap: () => Navigator.pushNamed(context, '/{{ module.snake_name }}'),
+                ),
+{%- endfor %}
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+{%- endif %}
+
+{%- for module in modules %}
+  Widget _build{{ module.name }}ModuleHome() {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: {{ module.menu_color if module.menu_color else 'Theme.of(context).primaryColor' }}.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  {{ _get_icon_from_name(module.icon) }},
+                  color: {{ module.menu_color if module.menu_color else 'Theme.of(context).primaryColor' }},
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                l10n.{{ module.snake_name }}Plural ?? '{{ module.translations.plural.get(default_locale, module.name) }}',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: MediaQuery.of(context).size.width > 800 ? 3 :
+                           MediaQuery.of(context).size.width > 600 ? 2 : 1,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.5,
+              children: [
+                _buildActionCard(
+                  title: l10n.{{ module.snake_name }}List ?? 'View {{ module.translations.plural.get(default_locale, module.name) }}',
+                  subtitle: l10n.{{ module.snake_name }}ListSubtitle ?? 'Browse and manage all {{ module.translations.plural.get(default_locale, module.name).lower() }}',
+                  icon: Icons.list,
+                  color: {{ module.menu_color if module.menu_color else 'Theme.of(context).primaryColor' }},
+                  onTap: () => Navigator.pushNamed(context, '/{{ module.snake_name }}'),
+                ),
+                _buildActionCard(
+                  title: l10n.create ?? 'Create',
+                  subtitle: l10n.{{ module.snake_name }}CreateSubtitle ?? 'Add a new {{ module.translations.singular.get(default_locale, module.name).lower() }}',
+                  icon: Icons.add,
+                  color: Colors.green,
+                  onTap: () => Navigator.pushNamed(context, '/{{ module.snake_name }}/create'),
+                ),
+{%- if module.export %}
+                _buildActionCard(
+                  title: l10n.export ?? 'Export',
+                  subtitle: l10n.{{ module.snake_name }}ExportSubtitle ?? 'Export {{ module.translations.plural.get(default_locale, module.name).lower() }} data',
+                  icon: Icons.download,
+                  color: Colors.blue,
+                  onTap: () => _showExportOptions(context, '{{ module.snake_name }}'),
+                ),
+{%- endif %}
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+{%- endfor %}
+
+  Widget _buildActionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: color,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeScreen() {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.apps,
+            size: 64,
+            color: Theme.of(context).primaryColor,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            l10n.appTitle ?? '{{ app_name }}',
+            style: Theme.of(context).textTheme.headlineLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.welcomeMessage ?? 'Welcome to {{ app_name }}',
+            style: Theme.of(context).textTheme.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+{%- if modules | selectattr('export') | list %}
+  void _showExportOptions(BuildContext context, String moduleName) {
+    final l10n = AppLocalizations.of(context)!;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.exportOptions ?? 'Export Options',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: Icon(Icons.table_chart),
+              title: Text('CSV'),
+              onTap: () {
+                Navigator.pop(context);
+                // Implementar exportação CSV
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.description),
+              title: Text('Excel (XLSX)'),
+              onTap: () {
+                Navigator.pop(context);
+                // Implementar exportação Excel
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.picture_as_pdf),
+              title: Text('PDF'),
+              onTap: () {
+                Navigator.pop(context);
+                // Implementar exportação PDF
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+{%- endif %}
+}

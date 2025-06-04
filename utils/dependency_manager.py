@@ -18,8 +18,10 @@ class DependencyManager:
                 'provider',  # State management
                 'get_it',  # Dependency injection
                 'dio',  # HTTP client
+                'share_plus',  # Value equality
                 'equatable',  # Value equality
                 'shared_preferences',  # Local storage
+                # 'flutter_localizations',  # Internationalization
                 'intl',  # Internationalization
             ],
 

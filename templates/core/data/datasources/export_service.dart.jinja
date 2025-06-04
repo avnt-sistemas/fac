@@ -87,7 +87,7 @@ class ExportService {
       // Add header row
       for (var i = 0; i < columns.length; i++) {
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
-          ..value = columns[i]
+          ..value = TextCellValue(columns[i])
           ..cellStyle = CellStyle(
             bold: true,
             horizontalAlign: HorizontalAlign.Center,
@@ -122,7 +122,7 @@ class ExportService {
           final columnWidth = 10 + maxWidth / 3; // Aproximação grosseira
 
           try {
-            sheet.getColWidths[i] = columnWidth;
+            sheet.getColumnWidths[i] = columnWidth;
           } catch (_) {
             // Falha silenciosa se não conseguir definir a largura
           }

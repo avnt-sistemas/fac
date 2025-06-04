@@ -43,7 +43,7 @@ class AppGenerator:
     def _load_config(self):
         """Load the YAML configuration file"""
         try:
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
 
             # Validate required config fields
@@ -617,13 +617,19 @@ class AppGenerator:
 
             # Render en
             template = self.jinja_env.get_template('l10n/app_en.arb.jinja')
-            output = template.render(app_name=self.config['app']['name'])
+            output = template.render(
+                app_name=self.config['app']['name'],
+                modules=self._process_modules()
+            )
             with open(os.path.join(l10n_dir, 'app_en.arb'), 'w', encoding='utf-8') as f:
                 f.write(output)
 
             # Render pt
             template = self.jinja_env.get_template('l10n/app_pt.arb.jinja')
-            output = template.render(app_name=self.config['app']['name'])
+            output = template.render(
+                app_name=self.config['app']['name'],
+                modules=self._process_modules()
+            )
             with open(os.path.join(l10n_dir, 'app_pt.arb'), 'w', encoding='utf-8') as f:
                 f.write(output)
 
@@ -640,3 +646,19 @@ class AppGenerator:
             # print("✅ `flutter gen-l10n` completed successfully")
         except subprocess.CalledProcessError as e:
             print(f"❌ Error running `flutter gen-l10n`: {e}")
+
+    def _process_modules(self):
+        """Processa módulos e campos do YAML para templates de tradução"""
+        modules = []
+        c = CaseConverter()
+
+        for module_config in self.config.get('modules', []):
+            module = module_config.copy()
+
+            # Nomes do módulo
+            module['snake_name'] = c.to_snake_case(module['name'])
+            module['camel_name'] = c.to_camel_case(module['name'])
+            module['pascal_name'] = c.to_pascal_case(module['name'])
+            modules.append(module)
+
+        return modules

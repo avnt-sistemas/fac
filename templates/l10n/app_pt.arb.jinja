@@ -1,5 +1,35 @@
 {
   "@@locale": "pt",
+
+{%- for module in modules %}
+  "{{ module.snake_name }}Singular": "{{ module.translations.singular.pt }}",
+  "@{{ module.snake_name }}Singular": {},
+  "{{ module.snake_name }}Plural": "{{ module.translations.plural.pt }}",
+  "@{{ module.snake_name }}Plural": {},
+  "{{ module.snake_name }}List": "{{ module.translations.plural.pt }}",
+  "@{{ module.snake_name }}List": {},
+  "{{ module.snake_name }}ListSubtitle": "Navegar e gerenciar todos os {{ module.translations.plural.pt.lower() }}",
+  "@{{ module.snake_name }}ListSubtitle": {},
+  "{{ module.snake_name }}CreateSubtitle": "Adicionar um novo {{ module.translations.singular.pt.lower() }}",
+  "@{{ module.snake_name }}CreateSubtitle": {},
+{%- if module.export %}
+  "{{ module.snake_name }}ExportSubtitle": "Exportar dados de {{ module.translations.plural.pt.lower() }}",
+  "@{{ module.snake_name }}ExportSubtitle": {},
+{%- endif %}
+
+{%- if module.translations and module.translations.fields %}
+{%- for field_name, field_translations in module.translations.fields.items() %}
+{%- if field_translations.pt %}
+  "{{ module.snake_name }}{{ field_name.capitalize() }}Label": "{{ field_translations.pt.label }}",
+  "@{{ module.snake_name }}{{ field_name.capitalize() }}Label": {},
+  "{{ module.snake_name }}{{ field_name.capitalize() }}Hint": "{{ field_translations.pt.hint }}",
+  "@{{ module.snake_name }}{{ field_name.capitalize() }}Hint": {},
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+
+{%- endfor %}
+
   "btnCancel": "Cancelar",
   "@btnCancel":{},
   "btnDelete": "Excluir",
@@ -180,4 +210,11 @@
   },
   "confirmDeleteMessage": "Tem certeza de que deseja excluir este item?",
   "btnConfirm": "Confirmar",
+  "export": "Exportar",
+  "exportOptions": "Opções de Exportação",
+  "welcomeMessage": "Bem-vindo ao {{ app_name }}",
+  "dashboard": "Dashboard",
+  "profile": "Perfil",
+  "logout": "Sair",
+  "invalidEmail": "Digite um email válido"
 }

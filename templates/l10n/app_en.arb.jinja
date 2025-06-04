@@ -1,5 +1,35 @@
 {
   "@@locale": "en",
+
+{%- for module in modules %}
+  "{{ module.snake_name }}Singular": "{{ module.translations.singular.en }}",
+  "@{{ module.snake_name }}Singular": {},
+  "{{ module.snake_name }}Plural": "{{ module.translations.plural.en }}",
+  "@{{ module.snake_name }}Plural": {},
+  "{{ module.snake_name }}List": "{{ module.translations.plural.en }}",
+  "@{{ module.snake_name }}List": {},
+  "{{ module.snake_name }}ListSubtitle": "Browse and manage all {{ module.translations.plural.en.lower() }}",
+  "@{{ module.snake_name }}ListSubtitle": {},
+  "{{ module.snake_name }}CreateSubtitle": "Add a new {{ module.translations.singular.en.lower() }}",
+  "@{{ module.snake_name }}CreateSubtitle": {},
+{%- if module.export %}
+  "{{ module.snake_name }}ExportSubtitle": "Export {{ module.translations.plural.en.lower() }} data",
+  "@{{ module.snake_name }}ExportSubtitle": {},
+{%- endif %}
+
+{%- if module.translations and module.translations.fields %}
+{%- for field_name, field_translations in module.translations.fields.items() %}
+{%- if field_translations.en %}
+  "{{ module.snake_name }}{{ field_name.capitalize() }}Label": "{{ field_translations.en.label }}",
+  "@{{ module.snake_name }}{{ field_name.capitalize() }}Label": {},
+  "{{ module.snake_name }}{{ field_name.capitalize() }}Hint": "{{ field_translations.en.hint }}",
+  "@{{ module.snake_name }}{{ field_name.capitalize() }}Hint": {},
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+
+{%- endfor %}
+
   "btnCancel": "Cancel",
   "@btnCancel":{},
   "btnDelete": "Delete",
@@ -29,6 +59,8 @@
   "@errorSaving":{},
   "errorGeneric": "Something went wrong.",
   "@errorGeneric":{},
+  "errorLoadingRelated": "Error loading related entities",
+  "@errorLoadingRelated":{},
   "createdSuccess": "{name} created successfully",
   "@createdSuccess": {
     "description": "Success message after creating an entity",
@@ -170,5 +202,17 @@
     }
   },
   "confirmDeleteMessage": "Are you sure you want to delete this item?",
-  "btnConfirm": "Confirm"
+  "btnConfirm": "Confirm",
+  "export": "Export",
+  "@export": {},
+  "exportOptions": "Export Options",
+  "@exportOptions": {},
+  "welcomeMessage": "Welcome to {{ app_name }}",
+  "@welcomeMessage": {},
+  "dashboard": "Dashboard",
+  "@dashboard": {},
+  "profile": "Profile",
+  "logout": "Logout",
+  "invalidEmail": "Please enter a valid email",
+  "@invalidEmail": {}
 }

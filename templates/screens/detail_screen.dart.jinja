@@ -464,12 +464,12 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
         title: Text(AppLocalizations.of(context)!.confirmDelete),
         content: Text(
 {%- if has_relationships and relationships.reverse %}
-          'AppLocalizations.of(context)!.confirmDeleteMsg( '{{ entity_name }}'))?\n\n'
+          '${AppLocalizations.of(context)!.confirmDeleteMsg("{{ entity_name }}")}\n\n'
           'This will also affect:\n'
-{%- for rel in relationships.reverse %}
-          '• ${_{{ rel.camel_name }}.length} {{ rel.property_name|replace("ListAs", " as ")|capitalize }}\n'
+{%- for rel in relationships.reverse | unique(attribute='snake_name') %}
+          '• ${_{{ rel.camel_name }}.length} ${AppLocalizations.of(context)!.{{ rel.snake_name }}Plural}\n'
 {%- endfor %}
-          '\nThis action cannot be undone.',
+          '\n${AppLocalizations.of(context)!.irreversible}',
 {%- else %}
     '${AppLocalizations.of(context)!.confirmDeleteMsg("{{ entity_name }}")}' 
     '${AppLocalizations.of(context)!.irreversible}',
