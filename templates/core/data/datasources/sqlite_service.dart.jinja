@@ -33,13 +33,18 @@ class SQLiteService {
       sqfliteFfiInit();
       // Change the default factory
       databaseFactory = databaseFactoryFfi;
+
+      // Debug para desktop
+      if (kDebugMode) {
+        databaseFactory = databaseFactoryFfiNoIsolate;
+      }
     }
 
     final databasesPath = await getDatabasesPath();
     final path = join(databasesPath, 'rally_manager.db');
 
-    // When running in debug mode, we can enable logging
-    if (kDebugMode) {
+    // When running in debug mode, we can enable logging (only for mobile)
+    if (kDebugMode && (Platform.isAndroid || Platform.isIOS)) {
       Sqflite.setDebugModeOn(true);
     }
 
