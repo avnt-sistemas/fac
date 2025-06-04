@@ -21,7 +21,7 @@ class ResponsiveBaseScreen extends StatefulWidget {
 
 class _ResponsiveBaseScreenState extends State<ResponsiveBaseScreen> {
 
-  final int currentIndex = _getCurrentIndexFromRoute();
+  int get currentIndex => _getCurrentIndexFromRoute();
 
   // Lista de itens do menu gerada automaticamente
   final List<NavigationItem> _navigationItems = [

@@ -1,12 +1,6 @@
   flutter_localizations:
       sdk: flutter
 
-localization:
-  arb-dir: lib/l10n
-  template-arb-file: intl_en.arb
-  output-localization-file: app_localizations.dart
-  output-class: AppLocalizations
-
 flutter:
 
   uses-material-design: true
@@ -14,8 +8,8 @@ flutter:
 
   # Assets do projeto
   assets:
-    - assets/images/
-    - assets/icons/
+#    - assets/images/
+#    - assets/icons/
     {%- if sqlite_enabled %}
     - assets/db/
     {%- endif %}

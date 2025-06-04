@@ -325,8 +325,8 @@ class AppGenerator:
             'test/domain',
             'test/features',
             'integration_test',
-            'assets/db',  # Para armazenar migrações SQL
-            'lib/l10n', # Para arquivos de tradução
+            'assets/db',
+            'lib/l10n',
         ]
 
         for dir_path in dirs:
@@ -566,35 +566,34 @@ class AppGenerator:
             last_dep_line = -1
             flutter_start = -1
 
+            deps_block_start = -1
+
             for i, line in enumerate(lines):
-                if line.startswith('  ') and ':' in line and not line.strip().startswith(
-                        '#') and 'dependencies:' not in line:
-                    last_dep_line = i
-                elif line.strip().startswith('flutter:'):
+                if line.startswith('dependencies:'):
+                    deps_block_start = i
+                elif line.startswith('dev_dependencies:'):
+                    last_dep_line = i - 1
+                elif line.startswith('flutter:'):
                     flutter_start = i
                     break
+
+            print(lines[deps_block_start])
+            print(lines[last_dep_line+1])
 
             if last_dep_line != -1 and flutter_start != -1:
                 result_lines = []
 
                 # Adiciona tudo até a última dependência
-                result_lines.extend(lines[:last_dep_line + 1])
+                result_lines.extend(lines[:last_dep_line])
 
                 # Adiciona flutter_localizations
                 result_lines.append('  flutter_localizations:')
                 result_lines.append('      sdk: flutter')
+                result_lines.append('  intl: any')
                 result_lines.append('')
 
-                # Pula dev_dependencies até flutter (preserva como está)
+                # Pula dev_dependencies até flutter
                 result_lines.extend(lines[last_dep_line + 1:flutter_start])
-
-                # Adiciona localization section
-                result_lines.append('localization:')
-                result_lines.append('  arb-dir: lib/l10n')
-                result_lines.append('  template-arb-file: intl_en.arb')
-                result_lines.append('  output-localization-file: app_localizations.dart')
-                result_lines.append('  output-class: AppLocalizations')
-                result_lines.append('')
 
                 # Adiciona nova flutter section
                 sqlite_enabled = self.config.get('persistence', {}).get('provider') == 'sqlite'
@@ -605,8 +604,8 @@ class AppGenerator:
                 result_lines.append('')
                 result_lines.append('  # Assets do projeto')
                 result_lines.append('  assets:')
-                result_lines.append('    - assets/images/')
-                result_lines.append('    - assets/icons/')
+                # result_lines.append('    - assets/images/')
+                # result_lines.append('    - assets/icons/')
                 if sqlite_enabled:
                     result_lines.append('    - assets/db/')
 
@@ -654,6 +653,12 @@ class AppGenerator:
             l10n_dir = os.path.join(app_dir, 'lib', 'l10n')
             os.makedirs(l10n_dir, exist_ok=True)
 
+            #Render yaml
+            template = self.jinja_env.get_template('l10n/l10n.yaml.jinja')
+            output = template.render()
+            with open(os.path.join(app_dir, 'l10n.yaml'), 'w', encoding='utf-8') as f:
+                f.write(output)
+
             # Render en
             template = self.jinja_env.get_template('l10n/app_en.arb.jinja')
             output = template.render(
@@ -680,6 +685,7 @@ class AppGenerator:
         try:
             # print("🔄 Running `flutter gen-l10n`...")
             self.flutter_cli.pub_genl10n(app_dir)
+            self.flutter_cli.pub_get(app_dir)
             # print("✅ `flutter gen-l10n` completed successfully")
         except subprocess.CalledProcessError as e:
             print(f"❌ Error running `flutter gen-l10n`: {e}")

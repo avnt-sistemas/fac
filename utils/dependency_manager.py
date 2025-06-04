@@ -21,13 +21,14 @@ class DependencyManager:
                 'share_plus',  # Value equality
                 'equatable',  # Value equality
                 'shared_preferences',  # Local storage
-                'flutter_gen',  # Internationalization
+                # 'flutter_localizations --sdk=flutter',  # Internationalization
                 # 'intl',  # Internationalization
             ],
 
             # Dependências para SQLite
             'sqlite': [
                 'sqflite',
+                'sqflite_common_ffi',
                 'path',
                 'uuid',
                 'path_provider',

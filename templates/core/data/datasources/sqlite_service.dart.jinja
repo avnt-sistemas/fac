@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// Service for SQLite database management
 class SQLiteService {
@@ -25,8 +27,16 @@ class SQLiteService {
 
   /// Initialize the database
   Future<Database> _initDatabase() async {
+    // Configurar para plataformas desktop
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      // Initialize FFI
+      sqfliteFfiInit();
+      // Change the default factory
+      databaseFactory = databaseFactoryFfi;
+    }
+
     final databasesPath = await getDatabasesPath();
-    final path = join(databasesPath, '{{ app_name|lower|replace(" ", "_") }}.db');
+    final path = join(databasesPath, 'rally_manager.db');
 
     // When running in debug mode, we can enable logging
     if (kDebugMode) {
