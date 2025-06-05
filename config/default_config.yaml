@@ -3,41 +3,1021 @@ app:
   package: "br.com.avnt.events_rally_manager"
   description: "Flutter application generated with Flutter App Creator"
 
+# Configuração padrão de idioma
+default_locale: "pt"
+
 theme:
-  primary_color: "#1976D2"
+  primary_color: "#1E88E5"
   secondary_color: "#424242"
-  accent_color: "#FF4081"
+  accent_color: "#FF8F00"
   font_family: "Roboto"
 
 auth:
   enabled: false
-  provider: "firebase"
 
 persistence:
   enabled: true
   provider: "sqlite"
 
 modules:
-  - name: "Task"
+  - name: "Event"
+    icon: "event"
+    menu_color: "#FF5722"
+    translations:
+      singular:
+        en: "Event"
+        pt: "Evento"
+      plural:
+        en: "Events"
+        pt: "Eventos"
+      fields:
+        name:
+          en:
+            label: "Event Name"
+            hint: "Enter the event name"
+          pt:
+            label: "Nome do Evento"
+            hint: "Digite o nome do evento"
+        startDate:
+          en:
+            label: "Start Date"
+            hint: "Select the start date"
+          pt:
+            label: "Data de Início"
+            hint: "Selecione a data de início"
+        endDate:
+          en:
+            label: "End Date"
+            hint: "Select the end date"
+          pt:
+            label: "Data de Término"
+            hint: "Selecione a data de término"
+        location:
+          en:
+            label: "Location"
+            hint: "Enter the event location"
+          pt:
+            label: "Local"
+            hint: "Digite o local do evento"
+        description:
+          en:
+            label: "Description"
+            hint: "Enter event description"
+          pt:
+            label: "Descrição"
+            hint: "Digite a descrição do evento"
+        status:
+          en:
+            label: "Status"
+            hint: "Select event status"
+          pt:
+            label: "Status"
+            hint: "Selecione o status do evento"
+        eventType:
+          en:
+            label: "Event Type"
+            hint: "Select event type (Rally, Cross Country, etc.)"
+          pt:
+            label: "Tipo de Evento"
+            hint: "Selecione o tipo de evento (Rally, Cross Country, etc.)"
     fields:
-      - name: "title"
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "startDate"
+        type: "DateTime"
+        required: true
+      - name: "endDate"
+        type: "DateTime"
+        required: true
+      - name: "location"
         type: "String"
         required: true
       - name: "description"
         type: "String"
-      - name: "completed"
-        type: "bool"
-        default: "false"
-      - name: "dueDate"
-        type: "DateTime?"
+      - name: "status"
+        type: "String"
+        required: true
+        default: "Planned"
+      - name: "eventType"
+        type: "String"
+        required: true
     soft_delete: true
     export:
       csv: true
       xlsx: true
       pdf: true
 
+  - name: "Stage"
+    icon: "flag"
+    menu_color: "#9C27B0"
+    translations:
+      singular:
+        en: "Stage"
+        pt: "Especial"
+      plural:
+        en: "Stages"
+        pt: "Especiais"
+      fields:
+        name:
+          en:
+            label: "Stage Name"
+            hint: "Enter the stage name"
+          pt:
+            label: "Nome da Especial"
+            hint: "Digite o nome da especial"
+        eventId:
+          en:
+            label: "Event"
+            hint: "Select the event"
+          pt:
+            label: "Evento"
+            hint: "Selecione o evento"
+        startDateTime:
+          en:
+            label: "Start Date/Time"
+            hint: "Select start date and time"
+          pt:
+            label: "Data/Hora de Início"
+            hint: "Selecione data e hora de início"
+        distance:
+          en:
+            label: "Distance (km)"
+            hint: "Enter stage distance"
+          pt:
+            label: "Distância (km)"
+            hint: "Digite a distância da especial"
+        terrainType:
+          en:
+            label: "Terrain Type"
+            hint: "Select terrain type"
+          pt:
+            label: "Tipo de Terreno"
+            hint: "Selecione o tipo de terreno"
+        difficulty:
+          en:
+            label: "Difficulty (1-5)"
+            hint: "Rate difficulty from 1 to 5"
+          pt:
+            label: "Dificuldade (1-5)"
+            hint: "Avalie a dificuldade de 1 a 5"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "eventId"
+        type: "reference"
+        reference: "Event"
+        required: true
+      - name: "startDateTime"
+        type: "DateTime"
+        required: true
+      - name: "distance"
+        type: "double"
+        required: true
+      - name: "terrainType"
+        type: "String"
+      - name: "difficulty"
+        type: "int"
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Participant"
+    icon: "people"
+    menu_color: "#4CAF50"
+    translations:
+      singular:
+        en: "Participant"
+        pt: "Participante"
+      plural:
+        en: "Participants"
+        pt: "Participantes"
+      fields:
+        name:
+          en:
+            label: "Full Name"
+            hint: "Enter participant's full name"
+          pt:
+            label: "Nome Completo"
+            hint: "Digite o nome completo do participante"
+        type:
+          en:
+            label: "Type"
+            hint: "Select Driver or Navigator"
+          pt:
+            label: "Tipo"
+            hint: "Selecione Piloto ou Navegador"
+        birthDate:
+          en:
+            label: "Birth Date"
+            hint: "Select birth date"
+          pt:
+            label: "Data de Nascimento"
+            hint: "Selecione a data de nascimento"
+        nationality:
+          en:
+            label: "Nationality"
+            hint: "Enter nationality"
+          pt:
+            label: "Nacionalidade"
+            hint: "Digite a nacionalidade"
+        licenseNumber:
+          en:
+            label: "License Number"
+            hint: "Enter racing license number"
+          pt:
+            label: "Número da Licença"
+            hint: "Digite o número da licença de piloto"
+        teamId:
+          en:
+            label: "Team"
+            hint: "Select team"
+          pt:
+            label: "Equipe"
+            hint: "Selecione a equipe"
+        photo:
+          en:
+            label: "Photo"
+            hint: "Upload participant photo"
+          pt:
+            label: "Foto"
+            hint: "Envie a foto do participante"
+        contactEmail:
+          en:
+            label: "Email"
+            hint: "Enter email address"
+          pt:
+            label: "Email"
+            hint: "Digite o endereço de email"
+        contactPhone:
+          en:
+            label: "Phone"
+            hint: "Enter phone number"
+          pt:
+            label: "Telefone"
+            hint: "Digite o número de telefone"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "type"
+        type: "String"
+        required: true
+      - name: "birthDate"
+        type: "DateTime"
+      - name: "nationality"
+        type: "String"
+      - name: "licenseNumber"
+        type: "String"
+        required: true
+      - name: "teamId"
+        type: "reference"
+        reference: "Team"
+      - name: "photo"
+        type: "String"
+      - name: "contactEmail"
+        type: "String"
+        validation: "email"
+      - name: "contactPhone"
+        type: "String"
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Team"
+    icon: "group_work"
+    menu_color: "#FF9800"
+    translations:
+      singular:
+        en: "Team"
+        pt: "Equipe"
+      plural:
+        en: "Teams"
+        pt: "Equipes"
+      fields:
+        name:
+          en:
+            label: "Team Name"
+            hint: "Enter team name"
+          pt:
+            label: "Nome da Equipe"
+            hint: "Digite o nome da equipe"
+        country:
+          en:
+            label: "Country"
+            hint: "Enter team's country"
+          pt:
+            label: "País"
+            hint: "Digite o país da equipe"
+        sponsors:
+          en:
+            label: "Sponsors"
+            hint: "Enter team sponsors"
+          pt:
+            label: "Patrocinadores"
+            hint: "Digite os patrocinadores da equipe"
+        manager:
+          en:
+            label: "Team Manager"
+            hint: "Enter team manager name"
+          pt:
+            label: "Chefe de Equipe"
+            hint: "Digite o nome do chefe de equipe"
+        logo:
+          en:
+            label: "Logo"
+            hint: "Upload team logo"
+          pt:
+            label: "Logo"
+            hint: "Envie o logo da equipe"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "country"
+        type: "String"
+      - name: "sponsors"
+        type: "String"
+      - name: "manager"
+        type: "String"
+      - name: "logo"
+        type: "String"
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Vehicle"
+    icon: "directions_car"
+    menu_color: "#2196F3"
+    translations:
+      singular:
+        en: "Vehicle"
+        pt: "Veículo"
+      plural:
+        en: "Vehicles"
+        pt: "Veículos"
+      fields:
+        brand:
+          en:
+            label: "Brand"
+            hint: "Enter vehicle brand"
+          pt:
+            label: "Marca"
+            hint: "Digite a marca do veículo"
+        model:
+          en:
+            label: "Model"
+            hint: "Enter vehicle model"
+          pt:
+            label: "Modelo"
+            hint: "Digite o modelo do veículo"
+        name:
+          en:
+            label: "Vehicle Name"
+            hint: "Enter vehicle identification name"
+          pt:
+            label: "Nome do Veículo"
+            hint: "Digite o nome de identificação do veículo"
+        year:
+          en:
+            label: "Year"
+            hint: "Enter manufacturing year"
+          pt:
+            label: "Ano"
+            hint: "Digite o ano de fabricação"
+        categoryId:
+          en:
+            label: "Category"
+            hint: "Select vehicle category"
+          pt:
+            label: "Categoria"
+            hint: "Selecione a categoria do veículo"
+        teamId:
+          en:
+            label: "Team"
+            hint: "Select team"
+          pt:
+            label: "Equipe"
+            hint: "Selecione a equipe"
+        specifications:
+          en:
+            label: "Specifications"
+            hint: "Enter technical specifications"
+          pt:
+            label: "Especificações"
+            hint: "Digite as especificações técnicas"
+        photo:
+          en:
+            label: "Photo"
+            hint: "Upload vehicle photo"
+          pt:
+            label: "Foto"
+            hint: "Envie a foto do veículo"
+    fields:
+      - name: "brand"
+        type: "String"
+        required: true
+      - name: "model"
+        type: "String"
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "year"
+        type: "int"
+      - name: "categoryId"
+        type: "reference"
+        reference: "Category"
+        required: true
+      - name: "teamId"
+        type: "reference"
+        reference: "Team"
+      - name: "specifications"
+        type: "String"
+      - name: "photo"
+        type: "String"
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Category"
+    icon: "category"
+    menu_color: "#795548"
+    translations:
+      singular:
+        en: "Category"
+        pt: "Categoria"
+      plural:
+        en: "Categories"
+        pt: "Categorias"
+      fields:
+        name:
+          en:
+            label: "Category Name"
+            hint: "Enter category name"
+          pt:
+            label: "Nome da Categoria"
+            hint: "Digite o nome da categoria"
+        description:
+          en:
+            label: "Description"
+            hint: "Enter category description"
+          pt:
+            label: "Descrição"
+            hint: "Digite a descrição da categoria"
+        handicapFactor:
+          en:
+            label: "Handicap Factor"
+            hint: "Enter handicap factor (default 1.0)"
+          pt:
+            label: "Fator de Handicap"
+            hint: "Digite o fator de handicap (padrão 1.0)"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "description"
+        type: "String"
+      - name: "handicapFactor"
+        type: "double"
+        default: "1.0"
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Registration"
+    icon: "app_registration"
+    menu_color: "#E91E63"
+    translations:
+      singular:
+        en: "Registration"
+        pt: "Inscrição"
+      plural:
+        en: "Registrations"
+        pt: "Inscrições"
+      fields:
+        eventId:
+          en:
+            label: "Event"
+            hint: "Select event"
+          pt:
+            label: "Evento"
+            hint: "Selecione o evento"
+        driverId:
+          en:
+            label: "Driver"
+            hint: "Select driver"
+          pt:
+            label: "Piloto"
+            hint: "Selecione o piloto"
+        navigatorId:
+          en:
+            label: "Navigator"
+            hint: "Select navigator"
+          pt:
+            label: "Navegador"
+            hint: "Selecione o navegador"
+        vehicleId:
+          en:
+            label: "Vehicle"
+            hint: "Select vehicle"
+          pt:
+            label: "Veículo"
+            hint: "Selecione o veículo"
+        competitorNumber:
+          en:
+            label: "Competitor Number"
+            hint: "Enter competitor number"
+          pt:
+            label: "Número do Competidor"
+            hint: "Digite o número do competidor"
+        status:
+          en:
+            label: "Status"
+            hint: "Select registration status"
+          pt:
+            label: "Status"
+            hint: "Selecione o status da inscrição"
+        feesPaid:
+          en:
+            label: "Fees Paid"
+            hint: "Mark if fees are paid"
+          pt:
+            label: "Taxas Pagas"
+            hint: "Marque se as taxas foram pagas"
+        registrationDate:
+          en:
+            label: "Registration Date"
+            hint: "Select registration date"
+          pt:
+            label: "Data de Inscrição"
+            hint: "Selecione a data de inscrição"
+    fields:
+      - name: "eventId"
+        type: "reference"
+        reference: "Event"
+        required: true
+      - name: "driverId"
+        type: "reference"
+        reference: "Participant"
+        required: true
+      - name: "navigatorId"
+        type: "reference"
+        reference: "Participant"
+        required: true
+      - name: "vehicleId"
+        type: "reference"
+        reference: "Vehicle"
+        required: true
+      - name: "competitorNumber"
+        type: "String"
+        required: true
+      - name: "status"
+        type: "String"
+        default: "'Pending'"
+      - name: "feesPaid"
+        type: "bool"
+        default: "false"
+      - name: "registrationDate"
+        type: "DateTime"
+        required: true
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Result"
+    icon: "emoji_events"
+    menu_color: "#FFC107"
+    translations:
+      singular:
+        en: "Result"
+        pt: "Resultado"
+      plural:
+        en: "Results"
+        pt: "Resultados"
+      fields:
+        registrationId:
+          en:
+            label: "Registration"
+            hint: "Select registration"
+          pt:
+            label: "Inscrição"
+            hint: "Selecione a inscrição"
+        stageId:
+          en:
+            label: "Stage"
+            hint: "Select stage"
+          pt:
+            label: "Especial"
+            hint: "Selecione a especial"
+        grossTime:
+          en:
+            label: "Gross Time (seconds)"
+            hint: "Enter gross time in seconds"
+          pt:
+            label: "Tempo Bruto (segundos)"
+            hint: "Digite o tempo bruto em segundos"
+        netTime:
+          en:
+            label: "Net Time (seconds)"
+            hint: "Enter net time after penalties"
+          pt:
+            label: "Tempo Líquido (segundos)"
+            hint: "Digite o tempo líquido após penalidades"
+        position:
+          en:
+            label: "Position"
+            hint: "Enter final position"
+          pt:
+            label: "Posição"
+            hint: "Digite a posição final"
+        status:
+          en:
+            label: "Status"
+            hint: "Select result status"
+          pt:
+            label: "Status"
+            hint: "Selecione o status do resultado"
+        points:
+          en:
+            label: "Points"
+            hint: "Enter points earned"
+          pt:
+            label: "Pontos"
+            hint: "Digite os pontos conquistados"
+        notes:
+          en:
+            label: "Notes"
+            hint: "Enter additional notes"
+          pt:
+            label: "Observações"
+            hint: "Digite observações adicionais"
+    fields:
+      - name: "registrationId"
+        type: "reference"
+        reference: "Registration"
+        required: true
+      - name: "stageId"
+        type: "reference"
+        reference: "Stage"
+        required: true
+      - name: "grossTime"
+        type: "double"
+        required: true
+      - name: "netTime"
+        type: "double"
+        required: true
+      - name: "position"
+        type: "int"
+      - name: "status"
+        type: "String"
+        default: "'Pending'"
+      - name: "points"
+        type: "int"
+        default: "0"
+      - name: "notes"
+        type: "String"
+    soft_delete: false
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "Penalty"
+    icon: "warning"
+    menu_color: "#F44336"
+    translations:
+      singular:
+        en: "Penalty"
+        pt: "Penalidade"
+      plural:
+        en: "Penalties"
+        pt: "Penalidades"
+      fields:
+        resultId:
+          en:
+            label: "Result"
+            hint: "Select result"
+          pt:
+            label: "Resultado"
+            hint: "Selecione o resultado"
+        type:
+          en:
+            label: "Penalty Type"
+            hint: "Select penalty type"
+          pt:
+            label: "Tipo de Penalidade"
+            hint: "Selecione o tipo de penalidade"
+        description:
+          en:
+            label: "Description"
+            hint: "Enter penalty description"
+          pt:
+            label: "Descrição"
+            hint: "Digite a descrição da penalidade"
+        timeAdded:
+          en:
+            label: "Time Added (seconds)"
+            hint: "Enter time penalty in seconds"
+          pt:
+            label: "Tempo Adicionado (segundos)"
+            hint: "Digite a penalidade de tempo em segundos"
+        pointsDeducted:
+          en:
+            label: "Points Deducted"
+            hint: "Enter points deducted"
+          pt:
+            label: "Pontos Deduzidos"
+            hint: "Digite os pontos deduzidos"
+        officialResponsible:
+          en:
+            label: "Official Responsible"
+            hint: "Enter responsible official name"
+          pt:
+            label: "Oficial Responsável"
+            hint: "Digite o nome do oficial responsável"
+        status:
+          en:
+            label: "Status"
+            hint: "Select penalty status"
+          pt:
+            label: "Status"
+            hint: "Selecione o status da penalidade"
+        dateTime:
+          en:
+            label: "Date/Time"
+            hint: "Select penalty date and time"
+          pt:
+            label: "Data/Hora"
+            hint: "Selecione data e hora da penalidade"
+    fields:
+      - name: "resultId"
+        type: "reference"
+        reference: "Result"
+        required: true
+      - name: "type"
+        type: "String"
+        required: true
+      - name: "description"
+        type: "String"
+        required: true
+      - name: "timeAdded"
+        type: "double"
+        default: "0"
+      - name: "pointsDeducted"
+        type: "int"
+        default: "0"
+      - name: "officialResponsible"
+        type: "String"
+      - name: "status"
+        type: "String"
+        default: "'Confirmed'"
+      - name: "dateTime"
+        type: "DateTime"
+        required: true
+    soft_delete: false
+    export:
+      csv: true
+      xlsx: true
+      pdf: true
+
+  - name: "SpreadsheetImport"
+    icon: "upload_file"
+    menu_color: "#607D8B"
+    translations:
+      singular:
+        en: "Import"
+        pt: "Importação"
+      plural:
+        en: "Imports"
+        pt: "Importações"
+      fields:
+        stageId:
+          en:
+            label: "Stage"
+            hint: "Select stage"
+          pt:
+            label: "Especial"
+            hint: "Selecione a especial"
+        fileName:
+          en:
+            label: "File Name"
+            hint: "Enter file name"
+          pt:
+            label: "Nome do Arquivo"
+            hint: "Digite o nome do arquivo"
+        importDate:
+          en:
+            label: "Import Date"
+            hint: "Select import date"
+          pt:
+            label: "Data de Importação"
+            hint: "Selecione a data de importação"
+        status:
+          en:
+            label: "Status"
+            hint: "Select import status"
+          pt:
+            label: "Status"
+            hint: "Selecione o status da importação"
+        errorMessage:
+          en:
+            label: "Error Message"
+            hint: "Error details if any"
+          pt:
+            label: "Mensagem de Erro"
+            hint: "Detalhes do erro, se houver"
+        columnMapping:
+          en:
+            label: "Column Mapping"
+            hint: "Column mapping configuration"
+          pt:
+            label: "Mapeamento de Colunas"
+            hint: "Configuração do mapeamento de colunas"
+        userId:
+          en:
+            label: "User"
+            hint: "Select user"
+          pt:
+            label: "Usuário"
+            hint: "Selecione o usuário"
+    fields:
+      - name: "stageId"
+        type: "reference"
+        reference: "Stage"
+        required: true
+      - name: "fileName"
+        type: "String"
+        required: true
+      - name: "importDate"
+        type: "DateTime"
+        required: true
+      - name: "status"
+        type: "String"
+        default: "'Pending'"
+      - name: "errorMessage"
+        type: "String"
+      - name: "columnMapping"
+        type: "String"
+      - name: "userId"
+        type: "reference"
+        reference: "User"
+    soft_delete: false
+    export:
+      csv: true
+      xlsx: true
+      pdf: false
+
+  - name: "SpreadsheetUpload"
+    icon: "cloud_upload"
+    menu_color: "#9E9E9E"
+    translations:
+      singular:
+        en: "Upload"
+        pt: "Upload"
+      plural:
+        en: "Uploads"
+        pt: "Uploads"
+      fields:
+        name:
+          en:
+            label: "Name"
+            hint: "Enter upload name"
+          pt:
+            label: "Nome"
+            hint: "Digite o nome do upload"
+        stageId:
+          en:
+            label: "Stage"
+            hint: "Select stage"
+          pt:
+            label: "Especial"
+            hint: "Selecione a especial"
+        filePath:
+          en:
+            label: "File Path"
+            hint: "Enter file path"
+          pt:
+            label: "Caminho do Arquivo"
+            hint: "Digite o caminho do arquivo"
+        uploadDate:
+          en:
+            label: "Upload Date"
+            hint: "Select upload date"
+          pt:
+            label: "Data do Upload"
+            hint: "Selecione a data do upload"
+        status:
+          en:
+            label: "Status"
+            hint: "Select upload status"
+          pt:
+            label: "Status"
+            hint: "Selecione o status do upload"
+        mappingConfiguration:
+          en:
+            label: "Mapping Configuration"
+            hint: "Enter mapping configuration"
+          pt:
+            label: "Configuração de Mapeamento"
+            hint: "Digite a configuração de mapeamento"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "stageId"
+        type: "reference"
+        reference: "Stage"
+        required: true
+      - name: "filePath"
+        type: "String"
+        required: true
+      - name: "uploadDate"
+        type: "DateTime"
+        required: true
+      - name: "status"
+        type: "String"
+        default: "'Pending'"
+      - name: "mappingConfiguration"
+        type: "String"
+    soft_delete: false
+    export:
+      csv: false
+      xlsx: false
+      pdf: false
+
+  - name: "User"
+    icon: "account_circle"
+    menu_color: "#3F51B5"
+    is_auth_model: true
+    translations:
+      singular:
+        en: "User"
+        pt: "Usuário"
+      plural:
+        en: "Users"
+        pt: "Usuários"
+      fields:
+        name:
+          en:
+            label: "Full Name"
+            hint: "Enter user's full name"
+          pt:
+            label: "Nome Completo"
+            hint: "Digite o nome completo do usuário"
+        email:
+          en:
+            label: "Email"
+            hint: "Enter email address"
+          pt:
+            label: "Email"
+            hint: "Digite o endereço de email"
+        position:
+          en:
+            label: "Position"
+            hint: "Enter user's position"
+          pt:
+            label: "Cargo"
+            hint: "Digite o cargo do usuário"
+        roles:
+          en:
+            label: "Roles"
+            hint: "Select user roles"
+          pt:
+            label: "Funções"
+            hint: "Selecione as funções do usuário"
+    fields:
+      - name: "name"
+        type: "String"
+        required: true
+      - name: "email"
+        type: "String"
+        required: true
+        unique: true
+        validation: "email"
+      - name: "position"
+        type: "String"
+      - name: "roles"
+        type: "List<String>"
+        values: "const ['user', 'admin', 'manager', 'reader', 'supervised']"
+        default: "const ['user']"
+    soft_delete: true
+    export:
+      csv: true
+      xlsx: true
+      pdf: false
+
 dashboard:
   enabled: false
-
-translations:
-  enabled: true
