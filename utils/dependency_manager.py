@@ -18,14 +18,17 @@ class DependencyManager:
                 'provider',  # State management
                 'get_it',  # Dependency injection
                 'dio',  # HTTP client
+                'share_plus',  # Value equality
                 'equatable',  # Value equality
                 'shared_preferences',  # Local storage
-                'intl',  # Internationalization
+                # 'flutter_localizations --sdk=flutter',  # Internationalization
+                # 'intl',  # Internationalization
             ],
 
             # Dependências para SQLite
             'sqlite': [
                 'sqflite',
+                'sqflite_common_ffi',
                 'path',
                 'uuid',
                 'path_provider',

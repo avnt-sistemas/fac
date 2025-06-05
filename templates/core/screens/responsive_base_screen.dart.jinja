@@ -1,0 +1,532 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+class ResponsiveBaseScreen extends StatefulWidget {
+  final Widget child;
+  final String title;
+  final Function(int) onItemSelected;
+  final Widget? floatingActionButton;
+
+  const ResponsiveBaseScreen({
+    Key? key,
+    required this.child,
+    required this.title,
+    required this.onItemSelected,
+    this.floatingActionButton,
+  }) : super(key: key);
+
+  @override
+  State<ResponsiveBaseScreen> createState() => _ResponsiveBaseScreenState();
+}
+
+class _ResponsiveBaseScreenState extends State<ResponsiveBaseScreen> {
+
+  int get currentIndex => _getCurrentIndexFromRoute();
+
+  // Lista de itens do menu gerada automaticamente
+  final List<NavigationItem> _navigationItems = [
+{%- for module in modules %}
+    NavigationItem(
+      icon: Icons.{{ module.icon }},
+      label: '{{ module.translations.plural.get(default_locale, module.name) }}',
+      route: '/{{ module.snake_name }}'
+{#      color: {{ module.menu_color if module.menu_color else 'null' }},#}
+    ),
+{%- endfor %}
+  ];
+
+  int _getCurrentIndexFromRoute() {
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+    if (currentRoute == null) return 0;
+
+    for (int i = 0; i < _navigationItems.length; i++) {
+      if (_navigationItems[i].route == currentRoute) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenType = _getScreenType(constraints);
+
+        switch (screenType) {
+          case ScreenType.desktop:
+            return _buildDesktopLayout();
+          case ScreenType.tablet:
+            return _buildTabletLayout();
+          case ScreenType.mobile:
+            return _buildMobileLayout();
+        }
+      },
+    );
+  }
+
+  Widget _buildDesktopLayout() {
+    return Scaffold(
+      floatingActionButton: widget.floatingActionButton,
+      body: Row(
+        children: [
+          // Menu lateral expandido
+          Container(
+            width: 250,
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(2, 0),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Header do menu
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.apps,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '{{ app_name }}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(color: Colors.white24),
+                // Lista de itens do menu
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _navigationItems.length,
+                    itemBuilder: (context, index) {
+                      return _buildExpandedMenuItem(index);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Conteúdo principal
+          Expanded(
+            child: Column(
+              children: [
+                // AppBar customizada
+                Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.01),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Text(
+                          widget.title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        const Spacer(),
+{%- if has_auth %}
+                        // Adicione aqui botões de ação, perfil, etc.
+                        IconButton(
+                          icon: const Icon(Icons.notifications_outlined),
+                          onPressed: () {},
+                        ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton(
+                          child: CircleAvatar(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            child: const Icon(Icons.person, color: Colors.white),
+                          ),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'profile',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.person),
+                                  SizedBox(width: 8),
+                                  Text(AppLocalizations.of(context)!.profile ?? 'Profile'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'logout',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.logout),
+                                  SizedBox(width: 8),
+                                  Text(AppLocalizations.of(context)!.logout ?? 'Logout'),
+                                ],
+                              ),
+                            ),
+                          ],
+                          onSelected: (value) {
+                            if (value == 'profile') {
+                              Navigator.pushNamed(context, '/profile');
+                            } else if (value == 'logout') {
+                              // Implementar logout
+                            }
+                          },
+                        ),
+{%- else %}
+                        IconButton(
+                          icon: const Icon(Icons.info_outline),
+                          onPressed: () {
+                            // Implementar ação de informações
+                          },
+                        ),
+{%- endif %}
+                      ],
+                    ),
+                  ),
+                ),
+                // Conteúdo da tela
+                Expanded(child: widget.child),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabletLayout() {
+    return Scaffold(
+      floatingActionButton: widget.floatingActionButton,
+      body: Row(
+        children: [
+          // Menu lateral compacto (apenas ícones)
+          Container(
+            width: 70,
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(2, 0),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Header compacto
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  child: Icon(
+                    Icons.apps,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const Divider(color: Colors.white24),
+                // Lista de ícones
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _navigationItems.length,
+                    itemBuilder: (context, index) {
+                      return _buildCompactMenuItem(index);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Conteúdo principal
+          Expanded(
+            child: Column(
+              children: [
+                // AppBar
+                AppBar(
+                  title: Text(widget.title),
+                  automaticallyImplyLeading: false,
+                  elevation: 0,
+{%- if has_auth %}
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () {},
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: PopupMenuButton(
+                        child: CircleAvatar(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          child: const Icon(Icons.person, color: Colors.white),
+                        ),
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'profile',
+                            child: Text(AppLocalizations.of(context)!.profile ?? 'Profile'),
+                          ),
+                          PopupMenuItem(
+                            value: 'logout',
+                            child: Text(AppLocalizations.of(context)!.logout ?? 'Logout'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+{%- endif %}
+                ),
+                Expanded(child: widget.child),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return Scaffold(
+      floatingActionButton: widget.floatingActionButton,
+      appBar: AppBar(
+        title: Text(widget.title),
+{%- if has_auth %}
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {},
+          ),
+          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: PopupMenuButton(
+              child: CircleAvatar(
+                backgroundColor: Theme.of(context).primaryColor,
+                child: const Icon(Icons.person, color: Colors.white),
+              ),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'profile',
+                  child: Text(AppLocalizations.of(context)!.profile ?? 'Profile'),
+                ),
+                PopupMenuItem(
+                  value: 'logout',
+                  child: Text(AppLocalizations.of(context)!.logout ?? 'Logout'),
+                ),
+              ],
+            ),
+          ),
+        ],
+{%- endif %}
+      ),
+      drawer: _buildDrawer(),
+      body: widget.child,
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.apps,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    '{{ app_name }}',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _navigationItems.length,
+              itemBuilder: (context, index) {
+                return _buildDrawerMenuItem(index);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedMenuItem(int index) {
+    final item = _navigationItems[index];
+    final isSelected = currentIndex == index;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: item.color != null && isSelected
+              ? BoxDecoration(
+                  color: item.color!.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6),
+                )
+              : null,
+          child: Icon(
+            item.icon,
+            color: isSelected
+                ? (item.color ?? Colors.white)
+                : Colors.white70,
+          ),
+        ),
+        title: Text(
+          item.label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white70,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+        selected: isSelected,
+        selectedTileColor: item.color?.withOpacity(0.1) ?? Colors.white.withOpacity(0.1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        onTap: () {
+          widget.onItemSelected(index);
+          Navigator.pushNamed(context, item.route);
+        },
+      ),
+    );
+  }
+
+  Widget _buildCompactMenuItem(int index) {
+    final item = _navigationItems[index];
+    final isSelected = currentIndex == index;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      child: Tooltip(
+        message: item.label,
+        child: InkWell(
+          onTap: () {
+            widget.onItemSelected(index);
+            Navigator.pushNamed(context, item.route);
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: isSelected
+                ? BoxDecoration(
+                    color: item.color?.withOpacity(0.2) ?? Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  )
+                : null,
+            child: Icon(
+              item.icon,
+              color: isSelected
+                  ? (item.color ?? Colors.white)
+                  : Colors.white70,
+              size: 24,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerMenuItem(int index) {
+    final item = _navigationItems[index];
+    final isSelected = currentIndex == index;
+
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: item.color != null && isSelected
+            ? BoxDecoration(
+                color: item.color!.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              )
+            : null,
+        child: Icon(
+          item.icon,
+          color: isSelected
+              ? (item.color ?? Theme.of(context).primaryColor)
+              : null,
+        ),
+      ),
+      title: Text(
+        item.label,
+        style: TextStyle(
+          color: isSelected
+              ? (item.color ?? Theme.of(context).primaryColor)
+              : null,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+      selected: isSelected,
+      onTap: () {
+        Navigator.pop(context);
+        widget.onItemSelected(index);
+        Navigator.pushNamed(context, item.route);
+      },
+    );
+  }
+
+  ScreenType _getScreenType(BoxConstraints constraints) {
+    final width = constraints.maxWidth;
+
+    if (width >= 1200) {
+      return ScreenType.desktop;
+    } else if (width >= 600) {
+      return ScreenType.tablet;
+    } else {
+      return ScreenType.mobile;
+    }
+  }
+}
+
+enum ScreenType { desktop, tablet, mobile }
+
+class NavigationItem {
+  final IconData icon;
+  final String label;
+  final String route;
+  final Color? color;
+
+  NavigationItem({
+    required this.icon,
+    required this.label,
+    required this.route,
+    this.color,
+  });
+}

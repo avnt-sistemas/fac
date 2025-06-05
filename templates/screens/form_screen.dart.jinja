@@ -1,4 +1,4 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
   import 'package:provider/provider.dart';
   import '../../../../app/theme/dimensions.dart';
   import '../../../../core/widgets/loading_indicator.dart';
@@ -34,7 +34,18 @@
 
     // Form field controllers
   {% for field in fields %}
+  {%- if field.type not in ['List<String>', 'bool'] %}
     late TextEditingController _{{ field.name }}Controller;
+  {%- endif %}
+  {% endfor %}
+
+    // Special field controllers
+  {% for field in fields %}
+  {%- if field.type == 'List<String>' %}
+    List<String> _selected{{ field.name|title }} = {{ field.default or '[]' }};
+  {%- elif field.type == 'bool' %}
+    bool _{{ field.name }} = {{ field.default or 'false' }};
+  {%- endif %}
   {% endfor %}
 
   {% if has_relationships %}
@@ -72,9 +83,9 @@
         text: widget.item?.{{ field.name }}?.toString() ?? '',
       );
   {% elif field.type == 'bool' %}
-      _{{ field.name }}Controller = TextEditingController(
-        text: (widget.item?.{{ field.name }} ?? false) ? 'true' : 'false',
-      );
+      _{{ field.name }} = widget.item?.{{ field.name }} ?? {{ field.default or 'false' }};
+  {% elif field.type == 'List<String>' %}
+      _selected{{ field.name|title }} = widget.item?.{{ field.name }} ?? {{ field.default or '[]' }};
   {% elif field.type == 'DateTime' or field.type == 'DateTime?' %}
       _{{ field.name }}Controller = TextEditingController(
         text: widget.item?.{{ field.name }}?.toString().substring(0, 10) ?? '',
@@ -134,7 +145,9 @@
     @override
     void dispose() {
   {% for field in fields %}
+  {%- if field.type not in ['List<String>', 'bool'] %}
       _{{ field.name }}Controller.dispose();
+  {%- endif %}
   {% endfor %}
       super.dispose();
     }
@@ -176,8 +189,8 @@
           TextFormField(
             controller: _{{ field.name }}Controller,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
-              hintText: AppLocalizations.of(context)!.{{ field.name }}Hint,
+              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Hint,
             ),
             validator: {% if field.required is defined and field.required %}(value) {
               if (value == null || value.isEmpty) {
@@ -190,8 +203,8 @@
           TextFormField(
             controller: _{{ field.name }}Controller,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
-              hintText: AppLocalizations.of(context)!.{{ field.name }}Hint,
+              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Hint,
             ),
             keyboardType: TextInputType.number,
             validator: {% if field.required is defined and field.required %}(value) {
@@ -201,8 +214,7 @@
               try {
                 int.parse(value);
               } catch (e) {
-                return 'return AppLocalizations.of(context)!.invalidNumber;
-';
+                return AppLocalizations.of(context)!.invalidNumber;
               }
               return null;
             }{% else %}(value) {
@@ -210,8 +222,7 @@
                 try {
                   int.parse(value);
                 } catch (e) {
-                  return 'return AppLocalizations.of(context)!.invalidNumber;
-';
+                  return AppLocalizations.of(context)!.invalidNumber;
                 }
               }
               return null;
@@ -220,9 +231,9 @@
   {% elif field.type == 'double' %}
           TextFormField(
             controller: _{{ field.name }}Controller,
-            decoration: const InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
-              hintText: AppLocalizations.of(context)!.{{ field.name }}Hint,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Hint,
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: {% if field.required is defined and field.required %}(value) {
@@ -232,8 +243,7 @@
               try {
                 double.parse(value);
               } catch (e) {
-                return 'return AppLocalizations.of(context)!.invalidNumber;
-';
+                return AppLocalizations.of(context)!.invalidNumber;
               }
               return null;
             }{% else %}(value) {
@@ -241,8 +251,7 @@
                 try {
                   double.parse(value);
                 } catch (e) {
-                  return 'return AppLocalizations.of(context)!.invalidNumber;
-';
+                  return AppLocalizations.of(context)!.invalidNumber;
                 }
               }
               return null;
@@ -250,19 +259,49 @@
           ),
   {% elif field.type == 'bool' %}
           SwitchListTile(
-            title: const Text('{{ field.name | capitalize }}'),
-            value: _{{ field.name }}Controller.text == 'true',
+            title: Text(AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label),
+            value: _{{ field.name }},
             onChanged: (bool value) {
               setState(() {
-                _{{ field.name }}Controller.text = value ? 'true' : 'false';
+                _{{ field.name }} = value;
               });
             },
+          ),
+  {% elif field.type == 'List<String>' %}
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: {{ field.get('values', '[]') }}.map((String option) {
+                  final isSelected = _selected{{ field.name|title }}.contains(option);
+                  return FilterChip(
+                    label: Text(option),
+                    selected: isSelected,
+                    onSelected: (bool selected) {
+                      setState(() {
+                        if (selected) {
+                          _selected{{ field.name|title }}.add(option);
+                        } else {
+                          _selected{{ field.name|title }}.remove(option);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
           ),
   {% elif field.type == 'DateTime' or field.type == 'DateTime?' %}
           TextFormField(
             controller: _{{ field.name }}Controller,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
+              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
               hintText: 'YYYY-MM-DD',
               suffixIcon: IconButton(
                 icon: const Icon(Icons.calendar_today),
@@ -281,8 +320,8 @@
           TextFormField(
             controller: _{{ field.name }}Controller,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ field.name }}Label,
-              hintText: AppLocalizations.of(context)!.{{ field.name }}Hint,
+              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Hint,
             ),
             validator: {% if field.required is defined and field.required %}(value) {
               if (value == null || value.isEmpty) {
@@ -300,8 +339,8 @@
           DropdownButtonFormField<{{ rel.to_module }}Entity>(
             value: _selected{{ rel.pascal_name }},
             decoration: InputDecoration(
-              labelText: '{{ rel.field_name | capitalize }}',
-              hintText: AppLocalizations.of(context)!.selectEntity('{{ rel.to_module }}'),
+              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ rel.field_name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ rel.field_name|capitalize }}Hint,
             ),
             items: _{{ rel.camel_name }}Options.map((item) {
               return DropdownMenuItem<{{ rel.to_module }}Entity>(
@@ -405,7 +444,9 @@
                   ? double.parse(_{{ field.name }}Controller.text)
                   : 0.0,
   {% elif field.type == 'bool' %}
-              {{ field.name }}: _{{ field.name }}Controller.text == 'true',
+              {{ field.name }}: _{{ field.name }},
+  {% elif field.type == 'List<String>' %}
+              {{ field.name }}: _selected{{ field.name|title }},
   {% elif field.type == 'DateTime?' %}
               {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
                   ? DateTime.parse(_{{ field.name }}Controller.text)
@@ -445,7 +486,9 @@
                   ? double.parse(_{{ field.name }}Controller.text)
                   : {% if field.default %}{{ field.default }}{% else %}0.0{% endif %},
   {% elif field.type == 'bool' %}
-              {{ field.name }}: _{{ field.name }}Controller.text == 'true',
+              {{ field.name }}: _{{ field.name }},
+  {% elif field.type == 'List<String>' %}
+              {{ field.name }}: _selected{{ field.name|title }},
   {% elif field.type == 'DateTime?' %}
               {{ field.name }}: _{{ field.name }}Controller.text.isNotEmpty
                   ? DateTime.parse(_{{ field.name }}Controller.text)
