@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/screens/responsive_base_screen.dart';
 import '../../../../core/widgets/error_message.dart';
 import '../../../../core/widgets/loading_indicator.dart';
 import '../../../../core/widgets/empty_list.dart';
 import '../../domain/entities/{{ snake_case_name }}_entity.dart';
 import '../controllers/{{ snake_case_name }}_controller.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 {% if has_relationships %}
-{% for rel in relationships.direct %}
+{% for rel in relationships.direct | unique(attribute='to_module') %}
 import '../../../{{ rel.to_module|lower }}/domain/entities/{{ rel.to_module|lower }}_entity.dart';
 import '../../../{{ rel.to_module|lower }}/presentation/controllers/{{ rel.to_module|lower }}_controller.dart';
 {% endfor %}
@@ -85,17 +88,19 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
     // Iniciamos o carregamento aqui, depois que o widget foi construído
     //_ensureDataLoaded();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('{{ entity_name }}s'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshData,
-          ),
-        ],
+    return ResponsiveBaseScreen(
+      title: AppLocalizations.of(context)!.{{ camel_name }}List,
+      onItemSelected: (i) {},
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            '/{{ snake_case_name }}/create',
+          ).then((_) => _refreshData());
+        },
+        child: const Icon(Icons.add),
       ),
-      body: FutureBuilder(
+      child: FutureBuilder(
         future: _dataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -111,12 +116,13 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 
           return Consumer<{{ entity_name }}Controller>(
             builder: (context, controller, child) {
+              final t = AppLocalizations.of(context)!;
               if (controller.items.isEmpty) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const EmptyList(message: 'No {{ entity_name }}s found'),
+                      EmptyList(message: t.emptyList(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () {
@@ -125,7 +131,7 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
                             '/{{ snake_case_name }}/create',
                           ).then((_) => _refreshData());
                         },
-                        child: const Text('Create {{ entity_name }}'),
+                        child: Text(t.create(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
                       ),
                     ],
                   ),
@@ -146,26 +152,18 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(
-            context,
-            '/{{ snake_case_name }}/create',
-          ).then((_) => _refreshData());
-        },
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
   Widget _buildItemCard(BuildContext context, {{ entity_name }}Entity item) {
+    final t = AppLocalizations.of(context)!;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
         title: Text(
 {%- for field in fields %}
 {%- if loop.first %}
-          item.{{ field.name }}{% if field.type != 'String' %}.toString(){% endif %},
+          item.title,
 {%- endif %}
 {%- endfor %}
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -176,20 +174,20 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 {%- for field in fields %}
 {%- if not loop.first and loop.index <= 3 %}
 {%- if field.type != 'reference' %}
-            Text('{{ field.name | capitalize }}: ${item.{{ field.name }}{% if field.type == 'DateTime' or field.type == 'DateTime?' %}?.toString().substring(0, 10) ?? 'N/A'{% elif field.type != 'String' %}?.toString() ?? 'N/A'{% else %} ?? 'N/A'{% endif %}}'),
+            Text('${t.{{ camel_name }}{{ field.name | capitalize }}Label}: ${item.{{ field.name }}{% if field.type == 'DateTime' or field.type == 'DateTime?' %}?.toString().substring(0, 10) ?? 'N/A'{% elif field.type != 'String' %}?.toString() ?? 'N/A'{% else %} ?? 'N/A'{% endif %}}'),
 {%- endif %}
 {%- endif %}
 {%- endfor %}
 {%- if has_relationships %}
 {%- if relationships.direct %}
 {%- for rel in relationships.direct %}
-            Text('{{ rel.field_name }}: ${_get{{ rel.pascal_name }}Name(item.{{ rel.field_name }})}'),
+            Text('${t.{{ camel_name }}{{ rel.field_name|capitalize }}Label}: ${_get{{ rel.pascal_name }}Name(item.{{ rel.field_name }})}'),
 {%- endfor %}
 {%- endif %}
 {%- if relationships.reverse %}
             // Show count of related items
 {%- for rel in relationships.reverse %}
-            Text('{{ rel.property_name|replace("ListAs", " as ") }}: ${item.{{ rel.property_name }}.length}'),
+            Text('${item.{{ rel.property_name }}.length} ${t.{{ rel.camel_name }}Plural.toLowerCase()}'),
 {%- endfor %}
 {%- endif %}
 {%- endif %}
@@ -239,20 +237,21 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 {% endif %}
 
   void _showDeleteConfirmation(BuildContext context, {{ entity_name }}Entity item) {
+    final t = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Deletion'),
+        title: Text(t.confirmDelete),
         content: Text(
 {% if has_relationships and relationships.reverse %}
-          'Are you sure you want to delete this {{ entity_name }}?\n\n'
-          'This will also affect:\n'
+          '${t.confirmDeleteMsg(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)}\n\n'
+          '${t.deleteEffect}:\n'
 {% for rel in relationships.reverse %}
-          '• ${item.{{ rel.property_name }}.length} {{ rel.property_name|replace("ListAs", " as ")|capitalize }}\n'
+          '• ${item.{{ rel.property_name }}.length} ${t.{{ rel.camel_name }}Plural.toLowerCase()}\n'
 {% endfor %}
-          '\nThis action cannot be undone.',
+          '\n${t.irreversible}.',
 {% else %}
-          'Are you sure you want to delete this {{ entity_name }}? This action cannot be undone.',
+          t.confirmDeleteMsg(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular),
 {% endif %}
         ),
         actions: [
@@ -260,7 +259,7 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: const Text('Cancel'),
+            child: Text(t.btnCancel),
           ),
           TextButton(
             onPressed: () async {
@@ -273,21 +272,21 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 {%- endif %}
                 _refreshData(); // Atualizar a lista após excluir
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('{{ entity_name }} deleted successfully'),
+                  SnackBar(
+                    content: Text(t.deletedSuccess(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
                   ),
                 );
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Error deleting {{ entity_name }}: $e'),
+                    content: Text(t.deletedError(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
                     backgroundColor: Colors.red,
                   ),
                 );
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(t.btnDelete),
           ),
         ],
       ),

@@ -2,28 +2,29 @@
   "@@locale": "pt",
 
 {%- for module in modules %}
-  "{{ module.snake_name }}Singular": "{{ module.translations.singular.pt }}",
-  "@{{ module.snake_name }}Singular": {},
-  "{{ module.snake_name }}Plural": "{{ module.translations.plural.pt }}",
-  "@{{ module.snake_name }}Plural": {},
-  "{{ module.snake_name }}List": "{{ module.translations.plural.pt }}",
-  "@{{ module.snake_name }}List": {},
-  "{{ module.snake_name }}ListSubtitle": "Navegar e gerenciar todos os {{ module.translations.plural.pt.lower() }}",
-  "@{{ module.snake_name }}ListSubtitle": {},
-  "{{ module.snake_name }}CreateSubtitle": "Adicionar um novo {{ module.translations.singular.pt.lower() }}",
-  "@{{ module.snake_name }}CreateSubtitle": {},
+  "{{ module.camel_name }}Singular": "{{ module.translations.singular.pt }}",
+  "{{ module.camel_name }}Gender": "{{ module.gender }}",
+  "@{{ module.camel_name }}Singular": {},
+  "{{ module.camel_name }}Plural": "{{ module.translations.plural.pt }}",
+  "@{{ module.camel_name }}Plural": {},
+  "{{ module.camel_name }}List": "{{ module.translations.plural.pt }}",
+  "@{{ module.camel_name }}List": {},
+  "{{ module.camel_name }}ListSubtitle": "Navegar e gerenciar todos os {{ module.translations.plural.pt.lower() }}",
+  "@{{ module.camel_name }}ListSubtitle": {},
+  "{{ module.camel_name }}CreateSubtitle": "Adicionar um novo {{ module.translations.singular.pt.lower() }}",
+  "@{{ module.camel_name }}CreateSubtitle": {},
 {%- if module.export %}
-  "{{ module.snake_name }}ExportSubtitle": "Exportar dados de {{ module.translations.plural.pt.lower() }}",
-  "@{{ module.snake_name }}ExportSubtitle": {},
+  "{{ module.camel_name }}ExportSubtitle": "Exportar dados de {{ module.translations.plural.pt.lower() }}",
+  "@{{ module.camel_name }}ExportSubtitle": {},
 {%- endif %}
 
 {%- if module.translations and module.translations.fields %}
 {%- for field_name, field_translations in module.translations.fields.items() %}
 {%- if field_translations.pt %}
-  "{{ module.snake_name }}{{ field_name.capitalize() }}Label": "{{ field_translations.pt.label }}",
-  "@{{ module.snake_name }}{{ field_name.capitalize() }}Label": {},
-  "{{ module.snake_name }}{{ field_name.capitalize() }}Hint": "{{ field_translations.pt.hint }}",
-  "@{{ module.snake_name }}{{ field_name.capitalize() }}Hint": {},
+  "{{ module.camel_name }}{{ field_name.capitalize() }}Label": "{{ field_translations.pt.label }}",
+  "@{{ module.camel_name }}{{ field_name.capitalize() }}Label": {},
+  "{{ module.camel_name }}{{ field_name.capitalize() }}Hint": "{{ field_translations.pt.hint }}",
+  "@{{ module.camel_name }}{{ field_name.capitalize() }}Hint": {},
 {%- endif %}
 {%- endfor %}
 {%- endif %}
@@ -36,10 +37,11 @@
   "@btnDelete":{},
   "btnSave": "Salvar",
   "@btnSave":{},
-  "create": "Criar {name}",
+  "create": "Cadastrar {gender, select, he{um novo} she{uma nova} other{um novo}} {name}",
   "@create": {
     "description": "Criar uma entidade nomeada",
     "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
@@ -60,24 +62,51 @@
   "@errorSaving":{},
   "errorGeneric": "Algo deu errado.",
   "@errorGeneric":{},
-  "createdSuccess": "{name} criado com sucesso",
+  "createdSuccess": "{name} {gender, select, he{cadastrado} she{cadastrada} other{cadastrado}} com sucesso",
   "@createdSuccess": {
     "description": "Mensagem de sucesso após criar uma entidade",
     "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
-  "updatedSuccess": "{name} atualizado com sucesso",
+  "updatedSuccess": "{name} {gender, select, he{atualizado} she{atualizada} other{atualizado}} com sucesso",
   "@updatedSuccess": {
     "description": "Mensagem de sucesso após atualizar uma entidade",
     "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
-  "deletedSuccess": "{name} excluído com sucesso",
+  "deletedSuccess": "{name} {gender, select, he{excluído} she{excluída} other{excluído}} com sucesso",
   "@deletedSuccess": {
     "description": "Mensagem após a exclusão bem-sucedida",
     "placeholders": {
+      "gender": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "createdError": "Ops! Algo deu errado ao cadastrar {gender, select, he{esse} she{essa} other{esso}} {name}",
+  "@createdError": {
+    "description": "Mensagem de erro após criar uma entidade",
+    "placeholders": {
+      "gender": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "updatedError": "{name} {gender, select, he{atualizado} she{atualizada} other{atualizado}} com sucesso",
+  "@updatedError": {
+    "description": "Mensagem de erro após atualizar uma entidade",
+    "placeholders": {
+      "gender": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "deletedError": "{name} {gender, select, he{excluído} she{excluída} other{excluído}} com sucesso",
+  "@deletedError": {
+    "description": "Mensagem de erro após exclusão",
+    "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
@@ -85,6 +114,14 @@
   "@notFound": {
     "description": "Mensagem quando a entidade não é encontrada",
     "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "emptyList": "Você ainda não adicionou {gender, select, he{nenhum} she{nenhuma} other{nenhum}} {name}!",
+  "@emptyList": {
+    "description": "Mensagem quando a lista de entidades está vazia",
+    "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
@@ -97,13 +134,16 @@
   },
   "confirmDelete": "Confirmar Exclusão",
   "@confirmDelete":{},
-  "confirmDeleteMsg": "Tem certeza de que deseja excluir {name}? Esta ação não poderá ser desfeita.",
+  "confirmDeleteMsg": "Tem certeza de que deseja excluir {gender, select, he{esse} she{essa} other{esse}} {name}?\n Esta ação não poderá ser desfeita!",
   "@confirmDeleteMsg": {
     "description": "Mensagem de confirmação antes da exclusão",
     "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
+  "deleteEffect": "Isso também afetará",
+  "@deleteEffect":{},
   "titleLabel": "Título",
   "@titleLabel":{},
   "titleHint": "Digite o título",

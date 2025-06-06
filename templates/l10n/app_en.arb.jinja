@@ -2,28 +2,29 @@
   "@@locale": "en",
 
 {%- for module in modules %}
-  "{{ module.snake_name }}Singular": "{{ module.translations.singular.en }}",
-  "@{{ module.snake_name }}Singular": {},
-  "{{ module.snake_name }}Plural": "{{ module.translations.plural.en }}",
-  "@{{ module.snake_name }}Plural": {},
-  "{{ module.snake_name }}List": "{{ module.translations.plural.en }}",
-  "@{{ module.snake_name }}List": {},
-  "{{ module.snake_name }}ListSubtitle": "Browse and manage all {{ module.translations.plural.en.lower() }}",
-  "@{{ module.snake_name }}ListSubtitle": {},
-  "{{ module.snake_name }}CreateSubtitle": "Add a new {{ module.translations.singular.en.lower() }}",
-  "@{{ module.snake_name }}CreateSubtitle": {},
+  "{{ module.camel_name }}Singular": "{{ module.translations.singular.en }}",
+  "{{ module.camel_name }}Gender": "{{ module.gender }}",
+  "@{{ module.camel_name }}Singular": {},
+  "{{ module.camel_name }}Plural": "{{ module.translations.plural.en }}",
+  "@{{ module.camel_name }}Plural": {},
+  "{{ module.camel_name }}List": "{{ module.translations.plural.en }}",
+  "@{{ module.camel_name }}List": {},
+  "{{ module.camel_name }}ListSubtitle": "Browse and manage all {{ module.translations.plural.en.lower() }}",
+  "@{{ module.camel_name }}ListSubtitle": {},
+  "{{ module.camel_name }}CreateSubtitle": "Add a new {{ module.translations.singular.en.lower() }}",
+  "@{{ module.camel_name }}CreateSubtitle": {},
 {%- if module.export %}
-  "{{ module.snake_name }}ExportSubtitle": "Export {{ module.translations.plural.en.lower() }} data",
-  "@{{ module.snake_name }}ExportSubtitle": {},
+  "{{ module.camel_name }}ExportSubtitle": "Export {{ module.translations.plural.en.lower() }} data",
+  "@{{ module.camel_name }}ExportSubtitle": {},
 {%- endif %}
 
 {%- if module.translations and module.translations.fields %}
 {%- for field_name, field_translations in module.translations.fields.items() %}
 {%- if field_translations.en %}
-  "{{ module.snake_name }}{{ field_name.capitalize() }}Label": "{{ field_translations.en.label }}",
-  "@{{ module.snake_name }}{{ field_name.capitalize() }}Label": {},
-  "{{ module.snake_name }}{{ field_name.capitalize() }}Hint": "{{ field_translations.en.hint }}",
-  "@{{ module.snake_name }}{{ field_name.capitalize() }}Hint": {},
+  "{{ module.camel_name }}{{ field_name.capitalize() }}Label": "{{ field_translations.en.label }}",
+  "@{{ module.camel_name }}{{ field_name.capitalize() }}Label": {},
+  "{{ module.camel_name }}{{ field_name.capitalize() }}Hint": "{{ field_translations.en.hint }}",
+  "@{{ module.camel_name }}{{ field_name.capitalize() }}Hint": {},
 {%- endif %}
 {%- endfor %}
 {%- endif %}
@@ -36,10 +37,11 @@
   "@btnDelete":{},
   "btnSave": "Save",
   "@btnSave":{},
-  "create": "Create {name}",
+  "create": "Create a new {name}",
   "@create": {
     "description": "Create a named entity",
     "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
@@ -51,6 +53,7 @@
     }
   },
   "update": "Update",
+  "@update":{},
   "fieldRequired": "This field is required",
   "@fieldRequired":{},
   "formRequiredField": "This field is required.",
@@ -59,12 +62,11 @@
   "@errorSaving":{},
   "errorGeneric": "Something went wrong.",
   "@errorGeneric":{},
-  "errorLoadingRelated": "Error loading related entities",
-  "@errorLoadingRelated":{},
   "createdSuccess": "{name} created successfully",
   "@createdSuccess": {
     "description": "Success message after creating an entity",
     "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
@@ -72,6 +74,7 @@
   "@updatedSuccess": {
     "description": "Success message after updating an entity",
     "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
@@ -79,76 +82,122 @@
   "@deletedSuccess": {
     "description": "Message after successful deletion",
     "placeholders": {
+      "gender": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "createdError": "Oops! Something went wrong creating this {name}",
+  "@createdError": {
+    "description": "Error message after creating an entity",
+    "placeholders": {
+      "gender": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "updatedError": "Error updating {name}",
+  "@updatedError": {
+    "description": "Error message after updating an entity",
+    "placeholders": {
+      "gender": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "deletedError": "Error deleting {name}",
+  "@deletedError": {
+    "description": "Error message after deletion",
+    "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
   "notFound": "{name} not found",
   "@notFound": {
-    "description": "Entity not found message",
+    "description": "Message when entity is not found",
     "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "emptyList": "You haven't added any {name} yet!",
+  "@emptyList": {
+    "description": "Message when entity list is empty",
+    "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
   "errorLoading": "Error loading {name}",
   "@errorLoading": {
-    "description": "Generic error when loading an entity",
+    "description": "Generic error loading an entity",
     "placeholders": {
       "name": { "type": "String" }
     }
   },
   "confirmDelete": "Confirm Deletion",
   "@confirmDelete":{},
-  "confirmDeleteMsg": "Are you sure you want to delete this {name}? This action cannot be undone.",
+  "confirmDeleteMsg": "Are you sure you want to delete this {name}?\nThis action cannot be undone!",
   "@confirmDeleteMsg": {
-    "description": "Message shown to confirm deletion",
+    "description": "Confirmation message before deletion",
     "placeholders": {
+      "gender": { "type": "String" },
       "name": { "type": "String" }
     }
   },
+  "deleteEffect": "This will also affect",
+  "@deleteEffect":{},
   "titleLabel": "Title",
   "@titleLabel":{},
-  "titleHint": "Enter the title",
+  "titleHint": "Enter title",
   "@titleHint":{},
   "detailsTitle": "{name} Details",
   "@detailsTitle": {
-    "description": "Title for the details screen",
+    "description": "Details screen title",
     "placeholders": {
       "name": { "type": "String" }
     }
   },
   "detailsSectionTitle": "Details",
   "@detailsSectionTitle":{},
-  "createdLabel": "Created",
+  "createdLabel": "Created on",
   "@createdLabel":{},
-  "updatedLabel": "Updated",
+  "updatedLabel": "Updated on",
   "@updatedLabel":{},
   "appTitle": "{{ app_name }}",
   "@appTitle":{},
   "irreversible": "This action cannot be undone.",
   "@irreversible":{},
-  "invalidNumber": "Please enter a valid number",
+  "selectEntity": "Select {name}",
+  "@selectEntity":{},
+  "invalidNumber": "Enter a valid number",
   "@invalidNumber":{},
   "descriptionLabel": "Description",
   "@descriptionLabel":{},
-  "descriptionHint": "Enter the description",
+  "descriptionHint": "Enter description",
   "@descriptionHint":{},
+  "errorLoadingRelated": "Error loading related data",
+  "@errorLoadingRelated":{},
+  "noItemsFound": "No {name} found",
+  "@noItemsFound": {
+    "description": "Message displayed when no related entities are found",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "dueDateLabel": "Due Date",
   "@dueDateLabel":{},
-  "loginTitle": "Login",
-  "welcomeBack": "Welcome Back",
+  "loginTitle": "Sign In",
+  "welcomeBack": "Welcome back",
   "signInToContinue": "Sign in to continue",
   "rememberMe": "Remember me",
-  "forgotPassword": "Forgot Password?",
-  "signIn": "Sign In",
-  "@signIn": {
-  "description": "Button text to sign in"
+  "@rememberMe": {
+    "description": "Text for remember login option"
   },
+  "forgotPassword": "Forgot password?",
   "noAccount": "Don't have an account?",
-  "signUp": "Sign Up",
+  "signUp": "Sign up",
   "orSignInWith": "Or sign in with",
   "signingIn": "Signing in...",
   "createAccountTitle": "Create Account",
-  "createAccountSubtitle": "Please fill in the form to create your account",
+  "createAccountSubtitle": "Fill out the form to create your account",
   "fullName": "Full Name",
   "fullNameHint": "Enter your full name",
   "fullNameRequired": "Please enter your name",
@@ -161,20 +210,18 @@
   "and": " and ",
   "privacyPolicy": "Privacy Policy",
   "alreadyHaveAccount": "Already have an account?",
+  "signIn": "Sign In",
   "accountCreatedTitle": "Account Created",
-  "accountCreatedMsg": "Your account has been created successfully. Please verify your email address to complete the registration process.",
+  "accountCreatedMsg": "Your account has been created successfully. Please check your email to complete the registration process.",
   "tContinue": "Continue",
   "creatingAccount": "Creating your account...",
   "unauthorizedMessage": "Unauthorized access",
   "notFoundMessage": "Resource not found",
   "validationFailed": "Validation failed",
-  "noInternet": "No internet connection",
-  "httpError": "HTTP error occurred: {message}",
-  "invalidFormat": "Invalid response format: {message}",
   "unknownNetworkError": "Unknown network error: {message}",
-  "networkError": "Network error occurred",
+  "networkError": "Network error",
   "noInternet": "No internet connection",
-  "httpError": "HTTP error occurred: {message}",
+  "httpError": "HTTP error: {message}",
   "@httpError": {
     "description": "HTTP error message with response content",
     "placeholders": {
@@ -185,7 +232,7 @@
   },
   "invalidFormat": "Invalid response format: {message}",
   "@invalidFormat": {
-    "description": "Error when the response format is not valid",
+    "description": "Invalid response format error message",
     "placeholders": {
       "message": {
         "type": "String"
@@ -194,7 +241,7 @@
   },
   "unknownNetworkError": "Unknown network error: {message}",
   "@unknownNetworkError": {
-    "description": "Error message for unidentified network issues",
+    "description": "Message for unidentified network error",
     "placeholders": {
       "message": {
         "type": "String"
@@ -204,15 +251,10 @@
   "confirmDeleteMessage": "Are you sure you want to delete this item?",
   "btnConfirm": "Confirm",
   "export": "Export",
-  "@export": {},
   "exportOptions": "Export Options",
-  "@exportOptions": {},
   "welcomeMessage": "Welcome to {{ app_name }}",
-  "@welcomeMessage": {},
   "dashboard": "Dashboard",
-  "@dashboard": {},
   "profile": "Profile",
   "logout": "Logout",
-  "invalidEmail": "Please enter a valid email",
-  "@invalidEmail": {}
+  "invalidEmail": "Enter a valid email"
 }

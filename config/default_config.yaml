@@ -1,7 +1,7 @@
 app:
-  name: "Events Rally Manager App"
-  package: "br.com.avnt.events_rally_manager"
-  description: "Flutter application generated with Flutter App Creator"
+  name: "Rally Manager"
+  package: "br.com.avnt.rally_manager"
+  description: "Complete system for rally event management and scoring"
 
 # Configuração padrão de idioma
 default_locale: "pt"
@@ -12,6 +12,12 @@ theme:
   accent_color: "#FF8F00"
   font_family: "Roboto"
 
+# Configuração do layout responsivo
+layout:
+  menu_type: "responsive"
+  show_app_bar: true
+  show_floating_action_button: true
+
 auth:
   enabled: false
 
@@ -21,7 +27,9 @@ persistence:
 
 modules:
   - name: "Event"
+    title: "name"
     icon: "event"
+    gender: "he"
     menu_color: "#FF5722"
     translations:
       singular:
@@ -110,6 +118,8 @@ modules:
 
   - name: "Stage"
     icon: "flag"
+    title: "name"
+    gender: "he"
     menu_color: "#9C27B0"
     translations:
       singular:
@@ -186,7 +196,9 @@ modules:
       pdf: true
 
   - name: "Participant"
+    title: "name"
     icon: "people"
+    gender: "she"
     menu_color: "#4CAF50"
     translations:
       singular:
@@ -290,7 +302,9 @@ modules:
       pdf: true
 
   - name: "Team"
+    title: "name"
     icon: "group_work"
+    gender: "he"
     menu_color: "#FF9800"
     translations:
       singular:
@@ -354,7 +368,9 @@ modules:
       pdf: true
 
   - name: "Vehicle"
+    title: "'${name}, ${brand}. ${year}'"
     icon: "directions_car"
+    gender: "he"
     menu_color: "#2196F3"
     translations:
       singular:
@@ -371,13 +387,6 @@ modules:
           pt:
             label: "Marca"
             hint: "Digite a marca do veículo"
-        model:
-          en:
-            label: "Model"
-            hint: "Enter vehicle model"
-          pt:
-            label: "Modelo"
-            hint: "Digite o modelo do veículo"
         name:
           en:
             label: "Vehicle Name"
@@ -424,8 +433,6 @@ modules:
       - name: "brand"
         type: "String"
         required: true
-      - name: "model"
-        type: "String"
       - name: "name"
         type: "String"
         required: true
@@ -449,7 +456,9 @@ modules:
       pdf: true
 
   - name: "Category"
+    title: "name"
     icon: "category"
+    gender: "she"
     menu_color: "#795548"
     translations:
       singular:
@@ -496,6 +505,16 @@ modules:
       pdf: true
 
   - name: "Registration"
+    title: "_driver?.title ?? _formatDate(registrationDate);\n\n
+    
+  String _formatDate(DateTime date) {\n
+    final localDate = date.toLocal();\n
+    final day = localDate.day.toString().padLeft(2, '0');\n
+    final month = localDate.month.toString().padLeft(2, '0');\n
+    final year = localDate.year.toString();\n
+    return '$day/$month/$year';\n
+  }//"
+    gender: "he"
     icon: "app_registration"
     menu_color: "#E91E63"
     translations:
@@ -598,7 +617,9 @@ modules:
       pdf: true
 
   - name: "Result"
+    title: "_registration?.title ?? registrationId.toString()"
     icon: "emoji_events"
+    gender: "he"
     menu_color: "#FFC107"
     translations:
       singular:
@@ -696,7 +717,9 @@ modules:
       pdf: true
 
   - name: "Penalty"
+    title: "description"
     icon: "warning"
+    gender: "she"
     menu_color: "#F44336"
     translations:
       singular:
@@ -794,6 +817,8 @@ modules:
       pdf: true
 
   - name: "SpreadsheetImport"
+    title: "fileName"
+    gender: "she"
     icon: "upload_file"
     menu_color: "#607D8B"
     translations:
@@ -881,7 +906,9 @@ modules:
       pdf: false
 
   - name: "SpreadsheetUpload"
+    title: "name"
     icon: "cloud_upload"
+    gender: "he"
     menu_color: "#9E9E9E"
     translations:
       singular:
@@ -959,7 +986,9 @@ modules:
       pdf: false
 
   - name: "User"
+    title: "name"
     icon: "account_circle"
+    gender: "he"
     menu_color: "#3F51B5"
     is_auth_model: true
     translations:

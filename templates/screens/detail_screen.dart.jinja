@@ -45,7 +45,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
 {%- endfor %}
 
 {%- for rel in relationships.reverse %}
-  List<{{ rel.from_module }}Entity> _{{ rel.camel_name }} = [];
+  List<{{ rel.from_module }}Entity> _{{ rel.camel_property }} = [];
 {%- endfor %}
 {%- endif %}
 
@@ -145,7 +145,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
 {%- for rel in relationships.reverse %}
       // Load related {{ rel.from_module }} list ({{ rel.property_name }})
       await _{{ rel.from_module.lower() }}Controller.getAll();
-      _{{ rel.camel_name }} = _{{ rel.from_module.lower() }}Controller.items
+      _{{ rel.camel_property }} = _{{ rel.from_module.lower() }}Controller.items
           .where((item) => item.{{ rel.field_name }} == _item!.id)
           .toList();
 {%- endfor %}
@@ -341,7 +341,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
 {%- for rel in relationships.reverse %}
         _buildRelatedSection(
           '{{ rel.property_name|replace("ListAs", " as ") }}',
-          _{{ rel.camel_name }},
+          _{{ rel.camel_property }},
           (item) => item.title ?? item.id, // Assuming name field exists
           (item) {
             Navigator.pushNamed(
@@ -457,23 +457,23 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
   }
 
   void _showDeleteConfirmation(BuildContext context, {{ entity_name }}Entity item) {
+    final t = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         //title: const Text('Confirm Deletion'),
         title: Text(AppLocalizations.of(context)!.confirmDelete),
         content: Text(
-{%- if has_relationships and relationships.reverse %}
-          '${AppLocalizations.of(context)!.confirmDeleteMsg("{{ entity_name }}")}\n\n'
-          'This will also affect:\n'
-{%- for rel in relationships.reverse | unique(attribute='snake_name') %}
-          '• ${_{{ rel.camel_name }}.length} ${AppLocalizations.of(context)!.{{ rel.snake_name }}Plural}\n'
-{%- endfor %}
-          '\n${AppLocalizations.of(context)!.irreversible}',
-{%- else %}
-    '${AppLocalizations.of(context)!.confirmDeleteMsg("{{ entity_name }}")}' 
-    '${AppLocalizations.of(context)!.irreversible}',
-{%- endif %}
+{% if has_relationships and relationships.reverse %}
+          '${t.confirmDeleteMsg(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)}\n\n'
+          '${t.deleteEffect}:\n'
+{% for rel in relationships.reverse %}
+          '• ${item.{{ rel.property_name }}.length} ${t.{{ rel.camel_name }}Plural.toLowerCase()}\n'
+{% endfor %}
+          '\n${t.irreversible}.',
+{% else %}
+          t.confirmDeleteMsg(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular),
+{% endif %}
         ),
         actions: [
           TextButton(
@@ -496,7 +496,7 @@ class _{{ entity_name }}DetailScreenState extends State<{{ entity_name }}DetailS
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       //content: Text('{{ entity_name }} deleted successfully'),
-                      content: Text(AppLocalizations.of(context)!.deletedSuccess( '{{ entity_name }}')),
+                    content: Text(t.deletedSuccess(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
                     ),
                   );
                 }

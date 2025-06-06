@@ -154,11 +154,12 @@ import 'package:flutter/material.dart';
 
     @override
     Widget build(BuildContext context) {
+      final t = AppLocalizations.of(context)!;
       return Scaffold(
         appBar: AppBar(
           title: Text(widget.isEditing
-              ? AppLocalizations.of(context)!.edit('{{ entity_name }}')
-              : AppLocalizations.of(context)!.createdSuccess('{{ entity_name }}')),
+              ? t.edit(t.{{ camel_name }}Singular)
+              : t.createdSuccess(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
 
         ),
         body: _isLoading
@@ -189,8 +190,8 @@ import 'package:flutter/material.dart';
           TextFormField(
             controller: _{{ field.name }}Controller,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
-              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Hint,
+              labelText: AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Hint,
             ),
             validator: {% if field.required is defined and field.required %}(value) {
               if (value == null || value.isEmpty) {
@@ -203,8 +204,8 @@ import 'package:flutter/material.dart';
           TextFormField(
             controller: _{{ field.name }}Controller,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
-              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Hint,
+              labelText: AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Hint,
             ),
             keyboardType: TextInputType.number,
             validator: {% if field.required is defined and field.required %}(value) {
@@ -232,8 +233,8 @@ import 'package:flutter/material.dart';
           TextFormField(
             controller: _{{ field.name }}Controller,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
-              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Hint,
+              labelText: AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Hint,
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: {% if field.required is defined and field.required %}(value) {
@@ -259,7 +260,7 @@ import 'package:flutter/material.dart';
           ),
   {% elif field.type == 'bool' %}
           SwitchListTile(
-            title: Text(AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label),
+            title: Text(AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Label),
             value: _{{ field.name }},
             onChanged: (bool value) {
               setState(() {
@@ -272,7 +273,7 @@ import 'package:flutter/material.dart';
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
+                AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Label,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
@@ -301,7 +302,7 @@ import 'package:flutter/material.dart';
           TextFormField(
             controller: _{{ field.name }}Controller,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
+              labelText: AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Label,
               hintText: 'YYYY-MM-DD',
               suffixIcon: IconButton(
                 icon: const Icon(Icons.calendar_today),
@@ -320,8 +321,8 @@ import 'package:flutter/material.dart';
           TextFormField(
             controller: _{{ field.name }}Controller,
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Label,
-              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ field.name|capitalize }}Hint,
+              labelText: AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ camel_name }}{{ field.name|capitalize }}Hint,
             ),
             validator: {% if field.required is defined and field.required %}(value) {
               if (value == null || value.isEmpty) {
@@ -339,8 +340,8 @@ import 'package:flutter/material.dart';
           DropdownButtonFormField<{{ rel.to_module }}Entity>(
             value: _selected{{ rel.pascal_name }},
             decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ rel.field_name|capitalize }}Label,
-              hintText: AppLocalizations.of(context)!.{{ snake_case_name }}{{ rel.field_name|capitalize }}Hint,
+              labelText: AppLocalizations.of(context)!.{{ camel_name }}{{ rel.field_name|capitalize }}Label,
+              hintText: AppLocalizations.of(context)!.{{ camel_name }}{{ rel.field_name|capitalize }}Hint,
             ),
             items: _{{ rel.camel_name }}Options.map((item) {
               return DropdownMenuItem<{{ rel.to_module }}Entity>(
@@ -379,6 +380,7 @@ import 'package:flutter/material.dart';
   {% endif %}
 
     Widget _buildButtons() {
+      final t = AppLocalizations.of(context)!;
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -386,14 +388,14 @@ import 'package:flutter/material.dart';
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: Text(AppLocalizations.of(context)!.btnCancel),
+            child: Text(t.btnCancel),
           ),
           SizedBox(width: Dimensions.marginM),
           ElevatedButton(
             onPressed: _saveForm,
               child: Text(widget.isEditing
-                ? AppLocalizations.of(context)!.update
-                : AppLocalizations.of(context)!.createdSuccess('{{ entity_name }}')),
+                ? t.update
+                : t.createdSuccess(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
           ),
         ],
       );
@@ -418,6 +420,7 @@ import 'package:flutter/material.dart';
     }
 
     Future<void> _saveForm() async {
+      final t = AppLocalizations.of(context)!;
       if (_formKey.currentState!.validate()) {
         setState(() {
           _isLoading = true;
@@ -463,7 +466,7 @@ import 'package:flutter/material.dart';
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(AppLocalizations.of(context)!.updatedSuccess("{{ entity_name }}")),
+                  content: Text(t.updatedSuccess(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
                 ),
               );
             }
@@ -507,7 +510,7 @@ import 'package:flutter/material.dart';
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(AppLocalizations.of(context)!.updatedSuccess("{{ entity_name }}")),
+                  content: Text(t.updatedSuccess(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
                 ),
               );
             }

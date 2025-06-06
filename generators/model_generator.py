@@ -56,6 +56,7 @@ class ModelGenerator:
                     relationships[target_module]['reverse'].append({
                         'from_module': module_name,
                         'field_name': rel['field_name'],
+                        'camel_name': self.case_converter.to_camel_case(module_name),
                         'reverse_name': f"{module_name.lower()}ListAs{field_base_name.capitalize()}",
                         'required': rel['required']
                     })
@@ -227,6 +228,7 @@ class ModelGenerator:
     def _generate_entity(self, module_dir, module_name, pascal_case, module_config, relationships, related_imports):
         """Generate the entity class for the module with relationships"""
         try:
+
             template = self.jinja_env.get_template('module/entity.dart.jinja')
 
             # Processar relacionamentos reversos para evitar duplicação
@@ -247,6 +249,7 @@ class ModelGenerator:
 
             output = template.render(
                 module_name=module_name,
+                title=module_config.get('title', 'name'),
                 pascal_case=pascal_case,
                 fields=module_config.get('fields', []),
                 soft_delete=module_config.get('soft_delete', False),
@@ -428,6 +431,7 @@ class ModelGenerator:
             ]
 
             snake_case_name = self.case_converter.to_snake_case(module_name)
+            camel_name = self.case_converter.to_camel_case(module_name)
 
             # Get relationships with adjusted names
             relationships = self.get_module_relationships(module_name)
@@ -435,7 +439,8 @@ class ModelGenerator:
             for rel in relationships['reverse']:
                 rel_copy = rel.copy()
                 rel_copy['property_name'] = self.case_converter.to_pascal_case(rel['reverse_name'])
-                rel_copy['camel_name'] = self.case_converter.to_camel_case(rel['reverse_name'])
+                rel_copy['camel_property'] = self.case_converter.to_camel_case(rel['reverse_name'])
+                rel_copy['camel_name'] = self.case_converter.to_camel_case(rel['from_module'])
                 rel_copy['snake_name'] = self.case_converter.to_snake_case(rel['from_module'])
                 processed_reverse.append(rel_copy)
 
@@ -454,6 +459,7 @@ class ModelGenerator:
                         pascal_case=pascal_case,
                         snake_case_name=snake_case_name,
                         entity_name=pascal_case,
+                        camel_name=camel_name,
                         fields=module_config.get('fields', []),
                         soft_delete=module_config.get('soft_delete', False),
                         relationships=adjusted_relationships,
