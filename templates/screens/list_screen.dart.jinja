@@ -25,6 +25,7 @@ class {{ entity_name }}ListScreen extends StatefulWidget {
 class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScreen> {
   late {{ entity_name }}Controller _controller;
   Future<void>? _dataFuture;  // Inicialmente nulo
+  String _searchTerm = '';
 {% if has_relationships %}
   // Reference controllers for loading related data
 {% for rel in relationships.direct %}
@@ -85,11 +86,10 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 
   @override
   Widget build(BuildContext context) {
-    // Iniciamos o carregamento aqui, depois que o widget foi construído
-    //_ensureDataLoaded();
+    final t = AppLocalizations.of(context)!;
 
     return ResponsiveBaseScreen(
-      title: AppLocalizations.of(context)!.{{ camel_name }}List,
+      title: t.{{ camel_name }}List,
       onItemSelected: (i) {},
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -101,7 +101,7 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
         child: const Icon(Icons.add),
       ),
       child: FutureBuilder(
-        future: _dataFuture,
+        future: _ensureDataLoaded(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const LoadingIndicator();
@@ -116,42 +116,118 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
 
           return Consumer<{{ entity_name }}Controller>(
             builder: (context, controller, child) {
-              final t = AppLocalizations.of(context)!;
-              if (controller.items.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      EmptyList(message: t.emptyList(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/{{ snake_case_name }}/create',
-                          ).then((_) => _refreshData());
-                        },
-                        child: Text(t.create(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular)),
-                      ),
-                    ],
-                  ),
-                );
-              }
+              final filtered = controller.items.where((item) {
+                return item.title.toLowerCase().contains(_searchTerm.toLowerCase());
+              }).toList();
 
-              return RefreshIndicator(
-                onRefresh: _refreshData,
-                child: ListView.builder(
-                  itemCount: controller.items.length,
-                  itemBuilder: (context, index) {
-                    final item = controller.items[index];
-                    return _buildItemCard(context, item);
-                  },
-                ),
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              labelText: t.search,
+                              prefixIcon: const Icon(Icons.search),
+                              border: const OutlineInputBorder(),
+                            ),
+                            onChanged: (value) {
+                              setState(() => _searchTerm = value);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.file_upload),
+                          label: Text(t.btnImport),
+                          onPressed: () {},
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.file_download),
+                          label: Text(t.btnExport),
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 600) {
+                          return _buildCardList(filtered, t);
+                        } else {
+                          return _buildDataTable(filtered, t);
+                        }
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           );
         },
       ),
+    );
+  }
+
+  Widget _buildCardList(List<{{ entity_name }}Entity> items, AppLocalizations t) {
+    if (items.isEmpty) return EmptyList(message: t.emptyList(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular));
+
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: ListView.builder(
+        itemCount: items.length,
+        itemBuilder: (context, index) => _buildItemCard(context, items[index]),
+      ),
+    );
+  }
+
+  Widget _buildDataTable(List<{{ entity_name }}Entity> items, AppLocalizations t) {
+    if (items.isEmpty) return EmptyList(message: t.emptyList(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular));
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: double.infinity), 
+      child: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: DataTable(
+          columns: [
+            {% set first_field = fields[0] %}
+            DataColumn(label: Text(t.{{ camel_name }}{{ first_field.name|capitalize }}Label)),
+            {% for field in fields[1:3] %}
+            DataColumn(label: Text(t.{{ camel_name }}{{ field.name|capitalize }}Label)),
+            {% endfor %}
+            DataColumn(label: Text(t.actions)),
+          ],
+          rows: items.map((item) {
+            return DataRow(
+              cells: [
+                DataCell(Text(item.title)),
+                {% for field in fields[1:3] %}
+                DataCell(Text(item.{{ field.name }}?.toString() ?? '-')),
+                {% endfor %}
+                DataCell(Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/{{ snake_case_name }}/edit', arguments: item)
+                            .then((_) => _refreshData());
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _showDeleteConfirmation(context, item),
+                    ),
+                  ],
+                )),
+              ],
+            );
+          }).toList(),
+        ),
+      )
     );
   }
 
