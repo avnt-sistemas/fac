@@ -195,7 +195,7 @@ import 'package:flutter/material.dart';
             ),
             validator: {% if field.required is defined and field.required %}(value) {
               if (value == null || value.isEmpty) {
-                return '{{ field.name | capitalize }} is required';
+                return AppLocalizations.of(context)!.fieldRequired;
               }
               return null;
             }{% else %}null{% endif %},
@@ -312,7 +312,7 @@ import 'package:flutter/material.dart';
             readOnly: true,
             validator: {% if field.required is defined and field.required %}(value) {
               if (value == null || value.isEmpty) {
-                return '{{ field.name | capitalize }} is required';
+                return AppLocalizations.of(context)!.fieldRequired;
               }
               return null;
             }{% else %}null{% endif %},
@@ -326,7 +326,7 @@ import 'package:flutter/material.dart';
             ),
             validator: {% if field.required is defined and field.required %}(value) {
               if (value == null || value.isEmpty) {
-                return '{{ field.name | capitalize }} is required';
+                return AppLocalizations.of(context)!.fieldRequired;
               }
               return null;
             }{% else %}null{% endif %},

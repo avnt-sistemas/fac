@@ -1,0 +1,18 @@
+enum LoadingState {
+  initial,
+  loading,
+  loaded,
+  error,
+  empty,
+  refreshing,
+}
+
+extension LoadingStateExtension on LoadingState {
+  bool get isLoading => this == LoadingState.loading || this == LoadingState.refreshing;
+  bool get isLoaded => this == LoadingState.loaded;
+  bool get hasError => this == LoadingState.error;
+  bool get isEmpty => this == LoadingState.empty;
+  bool get isInitial => this == LoadingState.initial;
+  bool get canShowData => isLoaded || isEmpty;
+  bool get canInteract => !isLoading;
+}

@@ -1,0 +1,213 @@
+abstract class BaseScreen<T> extends StatefulWidget {
+  final String? title;
+  final bool showAppBar;
+  final bool showFloatingActionButton;
+  final List<Widget>? actions;
+
+  const BaseScreen({
+    Key? key,
+    this.title,
+    this.showAppBar = true,
+    this.showFloatingActionButton = false,
+    this.actions,
+  }) : super(key: key);
+}
+
+abstract class BaseScreenState<T extends BaseScreen, D> extends State<T>
+    with LoadingStateMixin<T> {
+
+  // Data management
+  D? _data;
+  List<D>? _dataList;
+
+  // Getters for data
+  D? get data => _data;
+  List<D>? get dataList => _dataList;
+  bool get hasData => _data != null || (_dataList?.isNotEmpty == true);
+
+  // Abstract methods that must be implemented
+  Future<void> loadData();
+  Widget buildContent(BuildContext context);
+
+  // Optional methods that can be overridden
+  Widget? buildFloatingActionButton(BuildContext context) => null;
+  List<Widget>? buildActions(BuildContext context) => widget.actions;
+  Widget? buildLoadingWidget(BuildContext context) => null;
+  Widget? buildErrorWidget(BuildContext context, String error) => null;
+  Widget? buildEmptyWidget(BuildContext context) => null;
+
+  // Refresh functionality
+  bool get canRefresh => true;
+  Future<void> onRefresh() async {
+    if (!canRefresh) return;
+    await safeAsyncOperation(() async {
+      await loadData();
+    });
+  }
+
+  // Data setters with state management
+  void setData(D? newData) {
+    if (mounted) {
+      setState(() {
+        _data = newData;
+      });
+      if (newData != null) {
+        setLoaded();
+      } else {
+        setEmpty();
+      }
+    }
+  }
+
+  void setDataList(List<D>? newDataList) {
+    if (mounted) {
+      setState(() {
+        _dataList = newDataList;
+      });
+      if (newDataList?.isNotEmpty == true) {
+        setLoaded();
+      } else {
+        setEmpty();
+      }
+    }
+  }
+
+  // Lifecycle
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeScreen();
+    });
+  }
+
+  Future<void> _initializeScreen() async {
+    await safeAsyncOperation(() async {
+      await loadData();
+    });
+  }
+
+  // Safe operations wrapper
+  Future<void> performSafeOperation(Future<void> Function() operation) async {
+    if (!canPerformOperation()) return;
+    await safeAsyncOperation(operation);
+  }
+
+  // Navigation helpers
+  void safeNavigateTo(String routeName, {Object? arguments}) {
+    if (!canPerformOperation()) return;
+    Navigator.pushNamed(context, routeName, arguments: arguments);
+  }
+
+  void safeNavigateToReplacement(String routeName, {Object? arguments}) {
+    if (!canPerformOperation()) return;
+    Navigator.pushReplacementNamed(context, routeName, arguments: arguments);
+  }
+
+  // Snackbar helpers
+  void showSuccessMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: AppLocalizations.of(context)!.dismiss,
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: widget.showAppBar ? _buildAppBar() : null,
+      body: _buildBody(),
+      floatingActionButton: widget.showFloatingActionButton
+          ? _buildFloatingActionButton()
+          : null,
+    );
+  }
+
+  PreferredSizeWidget? _buildAppBar() {
+    return AppBar(
+      title: widget.title != null ? Text(widget.title!) : null,
+      actions: buildActions(context),
+      elevation: 0,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
+    );
+  }
+
+  Widget _buildBody() {
+    return ConditionalWrapper(
+      condition: canRefresh,
+      wrapper: (child) => RefreshWrapper(
+        onRefresh: onRefresh,
+        child: child,
+      ),
+      child: LoadingGuard(
+        state: loadingState,
+        error: error,
+        onRetry: () => _initializeScreen(),
+        loadingWidget: buildLoadingWidget(context),
+        errorWidget: error != null ? buildErrorWidget(context, error!) : null,
+        emptyWidget: buildEmptyWidget(context),
+        child: _buildContentWithOverlay(),
+      ),
+    );
+  }
+
+  Widget _buildContentWithOverlay() {
+    return Stack(
+      children: [
+        buildContent(context),
+        if (loadingState == LoadingState.refreshing)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 4,
+              child: LinearProgressIndicator(
+                backgroundColor: Colors.transparent,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).primaryColor,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget? _buildFloatingActionButton() {
+    final fab = buildFloatingActionButton(context);
+    if (fab == null) return null;
+
+    return ConditionalWrapper(
+      condition: !canInteract,
+      wrapper: (child) => IgnorePointer(
+        child: Opacity(
+          opacity: 0.5,
+          child: child,
+        ),
+      ),
+      child: fab,
+    );
+  }
+}

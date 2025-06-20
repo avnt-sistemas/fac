@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Consumer<AuthController>(
         builder: (context, authController, child) {
           if (authController.isLoading) {
-            return const LoadingIndicator(
+            return LoadingIndicator(
               message: AppLocalizations.of(context)!.signingIn,
             );
           }

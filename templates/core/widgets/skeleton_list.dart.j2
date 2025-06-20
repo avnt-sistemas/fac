@@ -1,0 +1,82 @@
+class SkeletonList extends StatelessWidget {
+  final int itemCount;
+  final double itemHeight;
+  final EdgeInsets? padding;
+
+  const SkeletonList({
+    Key? key,
+    this.itemCount = 5,
+    this.itemHeight = 80,
+    this.padding,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: padding ?? const EdgeInsets.all(16),
+      itemCount: itemCount,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) => _SkeletonListItem(height: itemHeight),
+    );
+  }
+}
+
+class _SkeletonListItem extends StatelessWidget {
+  final double height;
+
+  const _SkeletonListItem({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          SkeletonLoader(
+            width: 48,
+            height: 48,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SkeletonLoader(
+                  width: double.infinity,
+                  height: 16,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                const SizedBox(height: 8),
+                SkeletonLoader(
+                  width: 120,
+                  height: 12,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          SkeletonLoader(
+            width: 24,
+            height: 24,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -1,0 +1,17 @@
+class ConditionalWrapper extends StatelessWidget {
+  final bool condition;
+  final Widget Function(Widget child) wrapper;
+  final Widget child;
+
+  const ConditionalWrapper({
+    Key? key,
+    required this.condition,
+    required this.wrapper,
+    required this.child,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return condition ? wrapper(child) : child;
+  }
+}

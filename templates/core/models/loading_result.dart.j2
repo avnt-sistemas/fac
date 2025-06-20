@@ -1,0 +1,57 @@
+class LoadingResult<T> {
+  final LoadingState state;
+  final T? data;
+  final String? error;
+  final DateTime? lastUpdated;
+
+  const LoadingResult({
+    required this.state,
+    this.data,
+    this.error,
+    this.lastUpdated,
+  });
+
+  LoadingResult<T> copyWith({
+    LoadingState? state,
+    T? data,
+    String? error,
+    DateTime? lastUpdated,
+  }) {
+    return LoadingResult<T>(
+      state: state ?? this.state,
+      data: data ?? this.data,
+      error: error ?? this.error,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+    );
+  }
+
+  // Factory constructors for common states
+  factory LoadingResult.initial() => const LoadingResult(state: LoadingState.initial);
+
+  factory LoadingResult.loading() => const LoadingResult(state: LoadingState.loading);
+
+  factory LoadingResult.loaded(T data) => LoadingResult(
+    state: data != null && _isNotEmpty(data) ? LoadingState.loaded : LoadingState.empty,
+    data: data,
+    lastUpdated: DateTime.now(),
+  );
+
+  factory LoadingResult.error(String error) => LoadingResult(
+    state: LoadingState.error,
+    error: error,
+  );
+
+  factory LoadingResult.refreshing(T? currentData) => LoadingResult(
+    state: LoadingState.refreshing,
+    data: currentData,
+  );
+
+  // Helper to check if data is empty
+  static bool _isNotEmpty(dynamic data) {
+    if (data == null) return false;
+    if (data is List) return data.isNotEmpty;
+    if (data is Map) return data.isNotEmpty;
+    if (data is String) return data.isNotEmpty;
+    return true;
+  }
+}

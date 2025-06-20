@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class EmptyList extends StatelessWidget {
-  final String message;
+  final String? message;
   final String? actionLabel;
   final VoidCallback? onAction;
   final IconData? icon;
 
   const EmptyList({
     super.key,
-    this.message = 'No items found',
+    this.message,
     this.actionLabel,
     this.onAction,
     this.icon = Icons.inbox,
-  }) ;
+  });
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -29,7 +32,7 @@ class EmptyList extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              message,
+              message ?? loc.noItemsFoundGeneric,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Colors.grey[600],
               ),

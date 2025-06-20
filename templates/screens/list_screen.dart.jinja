@@ -189,7 +189,7 @@ class _{{ entity_name }}ListScreenState extends State<{{ entity_name }}ListScree
     if (items.isEmpty) return EmptyList(message: t.emptyList(t.{{ camel_name }}Gender, t.{{ camel_name }}Singular));
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: double.infinity), 
+      constraints: const BoxConstraints(minWidth: double.infinity),
       child: SingleChildScrollView(
         scrollDirection: Axis.vertical,
         child: DataTable(

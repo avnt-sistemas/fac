@@ -1,6 +1,6 @@
 app:
   name: "Rally Manager"
-  package: "br.com.avnt.rally_manager"
+  package: "br.com.adnc.rally_manager"
   description: "Complete system for rally event management and scoring"
 
 # Configuração padrão de idioma

@@ -1,0 +1,23 @@
+class RefreshWrapper extends StatelessWidget {
+  final Future<void> Function() onRefresh;
+  final Widget child;
+  final bool enabled;
+
+  const RefreshWrapper({
+    Key? key,
+    required this.onRefresh,
+    required this.child,
+    this.enabled = true,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      color: Theme.of(context).primaryColor,
+      child: child,
+    );
+  }
+}

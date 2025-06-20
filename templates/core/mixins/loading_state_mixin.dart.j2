@@ -1,0 +1,59 @@
+mixin LoadingStateMixin<T extends StatefulWidget> on State<T> {
+  LoadingState _loadingState = LoadingState.initial;
+  String? _error;
+  DateTime? _lastUpdated;
+
+  LoadingState get loadingState => _loadingState;
+  String? get error => _error;
+  DateTime? get lastUpdated => _lastUpdated;
+
+  bool get isLoading => _loadingState.isLoading;
+  bool get isLoaded => _loadingState.isLoaded;
+  bool get hasError => _loadingState.hasError;
+  bool get isEmpty => _loadingState.isEmpty;
+  bool get canShowData => _loadingState.canShowData;
+  bool get canInteract => _loadingState.canInteract;
+
+  void setLoadingState(LoadingState state, {String? error}) {
+    if (mounted) {
+      setState(() {
+        _loadingState = state;
+        _error = error;
+        if (state == LoadingState.loaded) {
+          _lastUpdated = DateTime.now();
+        }
+      });
+    }
+  }
+
+  void setLoading() => setLoadingState(LoadingState.loading);
+  void setLoaded() => setLoadingState(LoadingState.loaded);
+  void setError(String error) => setLoadingState(LoadingState.error, error: error);
+  void setEmpty() => setLoadingState(LoadingState.empty);
+  void setRefreshing() => setLoadingState(LoadingState.refreshing);
+
+  // Safe data operations
+  Future<void> safeAsyncOperation(Future<void> Function() operation) async {
+    try {
+      setLoading();
+      await operation();
+      setLoaded();
+    } catch (e) {
+      setError(e.toString());
+    }
+  }
+
+  // Guard to prevent operations during loading
+  bool canPerformOperation() {
+    if (isLoading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.operationInProgress),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+}

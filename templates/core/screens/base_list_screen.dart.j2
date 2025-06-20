@@ -1,0 +1,224 @@
+abstract class BaseListScreen<T> extends BaseScreen<T> {
+  const BaseListScreen({
+    Key? key,
+    String? title,
+    bool showAppBar = true,
+    bool showFloatingActionButton = true,
+    List<Widget>? actions,
+  }) : super(
+    key: key,
+    title: title,
+    showAppBar: showAppBar,
+    showFloatingActionButton: showFloatingActionButton,
+    actions: actions,
+  );
+}
+
+abstract class BaseListScreenState<T extends BaseListScreen, D>
+    extends BaseScreenState<T, D> {
+
+  // Search functionality
+  String _searchQuery = '';
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  String get searchQuery => _searchQuery;
+  bool get isSearching => _isSearching;
+  TextEditingController get searchController => _searchController;
+
+  // Filtering
+  Map<String, dynamic> _filters = {};
+  Map<String, dynamic> get filters => _filters;
+
+  // Pagination
+  bool _hasMoreData = false;
+  bool _isLoadingMore = false;
+
+  bool get hasMoreData => _hasMoreData;
+  bool get isLoadingMore => _isLoadingMore;
+
+  // Abstract methods for list screens
+  Widget buildListItem(BuildContext context, D item, int index);
+  Future<List<D>> fetchData({String? query, Map<String, dynamic>? filters});
+
+  // Optional methods
+  void onItemTap(D item) {}
+  void onItemLongPress(D item) {}
+  Future<void> loadMoreData() async {}
+
+  @override
+  Future<void> loadData() async {
+    final data = await fetchData(query: searchQuery, filters: filters);
+    setDataList(data);
+  }
+
+  // Search functionality
+  void toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        _searchQuery = '';
+        _reloadData();
+      }
+    });
+  }
+
+  void onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+    _debounceSearch();
+  }
+
+  Timer? _searchDebounce;
+  void _debounceSearch() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      _reloadData();
+    });
+  }
+
+  void updateFilters(Map<String, dynamic> newFilters) {
+    setState(() {
+      _filters = newFilters;
+    });
+    _reloadData();
+  }
+
+  void clearFilters() {
+    setState(() {
+      _filters.clear();
+    });
+    _reloadData();
+  }
+
+  Future<void> _reloadData() async {
+    await safeAsyncOperation(() async {
+      await loadData();
+    });
+  }
+
+  @override
+  Widget buildContent(BuildContext context) {
+    if (dataList == null || dataList!.isEmpty) {
+      return const SizedBox.shrink(); // LoadingGuard will handle empty state
+    }
+
+    return Column(
+      children: [
+        if (isSearching) _buildSearchBar(),
+        Expanded(
+          child: ListView.builder(
+            itemCount: dataList!.length + (hasMoreData ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == dataList!.length) {
+                return _buildLoadMoreIndicator();
+              }
+
+              final item = dataList![index];
+              return InkWell(
+                onTap: () => onItemTap(item),
+                onLongPress: () => onItemLongPress(item),
+                child: buildListItem(context, item, index),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: AppLocalizations.of(context)!.search,
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.clear),
+            onPressed: () {
+              _searchController.clear();
+              onSearchChanged('');
+            },
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        onChanged: onSearchChanged,
+      ),
+    );
+  }
+
+  Widget _buildLoadMoreIndicator() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    final actions = <Widget>[];
+
+    // Search action
+    actions.add(
+      IconButton(
+        icon: Icon(isSearching ? Icons.close : Icons.search),
+        onPressed: toggleSearch,
+      ),
+    );
+
+    // Filter action
+    actions.add(
+      IconButton(
+        icon: Stack(
+          children: [
+            const Icon(Icons.filter_list),
+            if (filters.isNotEmpty)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.error,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        onPressed: () {
+          // TODO: Open filter dialog
+        },
+      ),
+    );
+
+    // Add parent actions
+    final parentActions = super.buildActions(context);
+    if (parentActions != null) {
+      actions.addAll(parentActions);
+    }
+
+    return actions;
+  }
+
+  @override
+  Widget? buildLoadingWidget(BuildContext context) {
+    return const SkeletonList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+}

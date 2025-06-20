@@ -1,0 +1,380 @@
+abstract class BaseFormScreen<T> extends BaseScreen<T> {
+  final String? itemId;
+  final bool isEditMode;
+
+  const BaseFormScreen({
+    Key? key,
+    String? title,
+    bool showAppBar = true,
+    this.itemId,
+    List<Widget>? actions,
+  }) : isEditMode = itemId != null,
+        super(
+          key: key,
+          title: title,
+          showAppBar: showAppBar,
+          actions: actions,
+        );
+}
+
+abstract class BaseFormScreenState<T extends BaseFormScreen, D>
+    extends BaseScreenState<T, D> {
+
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _hasChanges = false;
+  bool _isSaving = false;
+
+  GlobalKey<FormState> get formKey => _formKey;
+  bool get hasChanges => _hasChanges;
+  bool get isSaving => _isSaving;
+  bool get isEditMode => widget.isEditMode;
+  String? get itemId => widget.itemId;
+
+  // Abstract methods for form screens
+  Future<D?> fetchItem(String id);
+  Future<void> saveItem(D item);
+  D createEmptyItem();
+  D buildItemFromForm();
+  void populateForm(D item);
+  List<Widget> buildFormFields(BuildContext context);
+
+  // Optional validation
+  String? validateForm() => null;
+
+  // Optional callbacks
+  void onFormChanged() {}
+  void onItemSaved(D item) {}
+  void onItemDeleted() {}
+
+  @override
+  Future<void> loadData() async {
+    if (isEditMode && itemId != null) {
+      final item = await fetchItem(itemId!);
+      if (item != null) {
+        setData(item);
+        populateForm(item);
+      }
+    } else {
+      final emptyItem = createEmptyItem();
+      setData(emptyItem);
+      populateForm(emptyItem);
+    }
+  }
+
+  // Form management
+  void markAsChanged() {
+    if (!_hasChanges) {
+      setState(() {
+        _hasChanges = true;
+      });
+    }
+    onFormChanged();
+  }
+
+  Future<bool> validateAndSave() async {
+    if (!_formKey.currentState!.validate()) {
+      showErrorMessage(AppLocalizations.of(context)!.pleaseFixErrors);
+      return false;
+    }
+
+    final customValidation = validateForm();
+    if (customValidation != null) {
+      showErrorMessage(customValidation);
+      return false;
+    }
+
+    return await _performSave();
+  }
+
+  Future<bool> _performSave() async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      _formKey.currentState!.save();
+      final item = buildItemFromForm();
+
+      await saveItem(item);
+
+      setState(() {
+        _hasChanges = false;
+        _isSaving = false;
+      });
+
+      showSuccessMessage(
+        isEditMode
+          ? AppLocalizations.of(context)!.itemUpdatedSuccessfully
+          : AppLocalizations.of(context)!.itemCreatedSuccessfully
+      );
+
+      onItemSaved(item);
+      return true;
+    } catch (e) {
+      setState(() {
+        _isSaving = false;
+      });
+      showErrorMessage(e.toString());
+      return false;
+    }
+  }
+
+  // Navigation with unsaved changes warning
+  Future<bool> onWillPop() async {
+    if (!hasChanges) return true;
+
+    final shouldPop = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.unsavedChanges),
+        content: Text(AppLocalizations.of(context)!.unsavedChangesMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(AppLocalizations.of(context)!.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(AppLocalizations.of(context)!.discard),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return shouldPop ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: onWillPop,
+      child: super.build(context),
+    );
+  }
+
+  @override
+  Widget buildContent(BuildContext context) {
+    if (!canShowData) {
+      return const SizedBox.shrink(); // LoadingGuard will handle loading/error states
+    }
+
+    return Form(
+      key: _formKey,
+      onChanged: markAsChanged,
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: buildFormFields(context),
+              ),
+            ),
+          ),
+          _buildBottomActions(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActions() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).dividerColor,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (isEditMode) ...[
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _isSaving ? null : _showDeleteConfirmation,
+                icon: const Icon(Icons.delete_outline),
+                label: Text(AppLocalizations.of(context)!.delete),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+          ],
+          Expanded(
+            flex: 2,
+            child: ElevatedButton.icon(
+              onPressed: _isSaving ? null : validateAndSave,
+              icon: _isSaving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(isEditMode ? Icons.update : Icons.save),
+              label: Text(_isSaving
+                ? AppLocalizations.of(context)!.saving
+                : isEditMode
+                  ? AppLocalizations.of(context)!.update
+                  : AppLocalizations.of(context)!.save),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.confirmDelete),
+        content: Text(AppLocalizations.of(context)!.deleteConfirmationMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(AppLocalizations.of(context)!.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(AppLocalizations.of(context)!.delete),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _performDelete();
+    }
+  }
+
+  Future<void> _performDelete() async {
+    await performSafeOperation(() async {
+      // Implement delete logic in derived classes
+      await deleteItem();
+
+      showSuccessMessage(AppLocalizations.of(context)!.itemDeletedSuccessfully);
+      onItemDeleted();
+
+      Navigator.pop(context, true); // Return true to indicate item was deleted
+    });
+  }
+
+  // Abstract delete method
+  Future<void> deleteItem();
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    final actions = <Widget>[];
+
+    // Save action in app bar
+    actions.add(
+      IconButton(
+        onPressed: _isSaving ? null : validateAndSave,
+        icon: _isSaving
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.check),
+      ),
+    );
+
+    // Add parent actions
+    final parentActions = super.buildActions(context);
+    if (parentActions != null) {
+      actions.addAll(parentActions);
+    }
+
+    return actions;
+  }
+
+  // Helper method for form fields
+  Widget buildFormField({
+    required String label,
+    required String value,
+    required ValueChanged<String> onChanged,
+    FormFieldValidator<String>? validator,
+    TextInputType? keyboardType,
+    int? maxLines,
+    bool enabled = true,
+    bool required = false,
+    String? hint,
+    Widget? suffix,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        initialValue: value,
+        decoration: InputDecoration(
+          labelText: required ? '$label *' : label,
+          hintText: hint,
+          suffix: suffix,
+          border: const OutlineInputBorder(),
+          enabled: enabled && !_isSaving,
+        ),
+        keyboardType: keyboardType,
+        maxLines: maxLines ?? 1,
+        validator: validator,
+        onChanged: (value) {
+          onChanged(value);
+          markAsChanged();
+        },
+        enabled: enabled && !_isSaving,
+      ),
+    );
+  }
+
+  Widget buildDropdownField<E>({
+    required String label,
+    required E? value,
+    required List<E> items,
+    required ValueChanged<E?> onChanged,
+    required String Function(E) getDisplayName,
+    FormFieldValidator<E>? validator,
+    bool enabled = true,
+    bool required = false,
+    String? hint,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: DropdownButtonFormField<E>(
+        value: value,
+        decoration: InputDecoration(
+          labelText: required ? '$label *' : label,
+          hintText: hint,
+          border: const OutlineInputBorder(),
+        ),
+        items: items.map((item) {
+          return DropdownMenuItem<E>(
+            value: item,
+            child: Text(getDisplayName(item)),
+          );
+        }).toList(),
+        onChanged: enabled && !_isSaving ? (newValue) {
+          onChanged(newValue);
+          markAsChanged();
+        } : null,
+        validator: validator,
+      ),
+    );
+  }
+}

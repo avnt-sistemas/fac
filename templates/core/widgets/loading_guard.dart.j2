@@ -1,0 +1,42 @@
+class LoadingGuard extends StatelessWidget {
+  final LoadingState state;
+  final Widget child;
+  final Widget? loadingWidget;
+  final Widget? errorWidget;
+  final Widget? emptyWidget;
+  final VoidCallback? onRetry;
+  final String? error;
+
+  const LoadingGuard({
+    Key? key,
+    required this.state,
+    required this.child,
+    this.loadingWidget,
+    this.errorWidget,
+    this.emptyWidget,
+    this.onRetry,
+    this.error,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    switch (state) {
+      case LoadingState.initial:
+      case LoadingState.loading:
+        return loadingWidget ?? const LoadingWidget();
+
+      case LoadingState.error:
+        return errorWidget ?? ErrorWidget(
+          error: error ?? AppLocalizations.of(context)!.genericError,
+          onRetry: onRetry,
+        );
+
+      case LoadingState.empty:
+        return emptyWidget ?? EmptyWidget();
+
+      case LoadingState.loaded:
+      case LoadingState.refreshing:
+        return child;
+    }
+  }
+}

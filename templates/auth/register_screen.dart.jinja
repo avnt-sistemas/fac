@@ -40,7 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: Consumer<AuthController>(
         builder: (context, authController, child) {
           if (authController.isLoading) {
-            return const LoadingIndicator(
+            return LoadingIndicator(
               message: AppLocalizations.of(context)!.creatingAccount,
             );
           }
